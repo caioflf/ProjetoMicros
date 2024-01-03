@@ -512,6 +512,30 @@ void interpreta_serial(){ //interpreta as mensagens enviadas pelo servidor exter
 		limpa_serial_global();
 	}
 }
+void esquinas_mais_proximas(unsigned short x, unsigned short y, unsigned short vet[]){
+    char i, j;
+    unsigned short DIST[12][2], aux1, aux2;
+    for(i=0;i<=11;i++){
+        DIST[i][1]=(ESQUINAS[i][1]-x)(ESQUINAS[i][1]-x)+(ESQUINAS[i][2]-y)(ESQUINAS[i][2]-y);
+        DIST[i][2]=i;
+    }
+    for(j=0;j<=11;j++){
+        for(i=0;i<=11;i++){
+            if(DIST[i][1]>DIST[i+1][1]){
+                aux1=DIST[i][1];
+                aux2=DIST[i][2];
+                DIST[i][1]=DIST[i+1][1];
+                DIST[i][2]=DIST[i+1][2];
+                DIST[i+1][1]=aux1;
+                DIST[i+1][2]=aux2;
+            }
+
+        }
+    }
+    vet[1]=DIST[1][2];
+    vet[2]=DIST[2][2];
+
+}
 
 int main(void){
 	char perfil;
