@@ -514,27 +514,25 @@ void interpreta_serial(){ //interpreta as mensagens enviadas pelo servidor exter
 }
 void esquinas_mais_proximas(unsigned short x, unsigned short y, unsigned short vet[]){
     char i, j;
-    unsigned short DIST[12][2], aux1, aux2;
+    int DIST[12][2], aux1, aux2;
     for(i=0;i<=11;i++){
-        DIST[i][1]=(ESQUINAS[i][1]-x)(ESQUINAS[i][1]-x)+(ESQUINAS[i][2]-y)(ESQUINAS[i][2]-y);
-        DIST[i][2]=i;
+        DIST[i][0]=((ESQUINAS[i][0]-x)(ESQUINAS[i][0]-x)+(ESQUINAS[i][1]-y)(ESQUINAS[i][1]-y));
+        DIST[i][1]=i;
     }
-    for(j=0;j<=11;j++){
-        for(i=0;i<=11;i++){
-            if(DIST[i][1]>DIST[i+1][1]){
-                aux1=DIST[i][1];
-                aux2=DIST[i][2];
+    for(j=0;j<=10;j++){
+        for(i=0;i<=10;i++){
+            if(DIST[i][0]>DIST[i+1][0]){
+                aux1=DIST[i][0];
+                aux2=DIST[i][1];
+                DIST[i][0]=DIST[i+1][0];
                 DIST[i][1]=DIST[i+1][1];
-                DIST[i][2]=DIST[i+1][2];
-                DIST[i+1][1]=aux1;
-                DIST[i+1][2]=aux2;
+                DIST[i+1][0]=aux1;
+                DIST[i+1][1]=aux2;
             }
-
         }
     }
-    vet[1]=DIST[1][2];
-    vet[2]=DIST[2][2];
-
+    vet[0]=DIST[0][1];
+    vet[1]=DIST[1][1];
 }
 
 int main(void){
