@@ -516,7 +516,7 @@ void esquinas_mais_proximas(unsigned short x, unsigned short y, unsigned short v
     char i, j;
     int DIST[12][2], aux1, aux2;
     for(i=0;i<=11;i++){
-        DIST[i][0]=((ESQUINAS[i][0]-x)(ESQUINAS[i][0]-x)+(ESQUINAS[i][1]-y)(ESQUINAS[i][1]-y));
+        DIST[i][0]=((ESQUINAS[i][0]-x)*(ESQUINAS[i][0]-x)+(ESQUINAS[i][1]-y)*(ESQUINAS[i][1]-y));
         DIST[i][1]=i;
     }
     for(j=0;j<=10;j++){
@@ -534,7 +534,6 @@ void esquinas_mais_proximas(unsigned short x, unsigned short y, unsigned short v
     vet[0]=DIST[0][1];
     vet[1]=DIST[1][1];
 }
-
 int main(void){
 	char perfil;
 	unsigned char verificacao = 0;						// flag de verificacao se é solicitado desligamento ou nao
