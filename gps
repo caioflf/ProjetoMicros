@@ -1,0 +1,187 @@
+#include <stdio.h>
+unsigned short ESQUINAS[12][2] = {
+    420, 540,
+    860, 540,
+    1330, 540,
+    1790, 540,
+    420, 1060,
+    860, 1060,
+    1330, 1060,
+    1790, 1060,
+    420, 1580,
+    860, 1580,
+    1330, 1580,
+    1790, 1580
+};
+
+void esquinas_mais_proximas(unsigned short x, unsigned short y, unsigned short vet[]){
+	char i, j;
+	int DIST[12][2], aux1, aux2;
+	for(i=0;i<=11;i++){
+		DIST[i][0]=((ESQUINAS[i][0]-x)*(ESQUINAS[i][0]-x)+(ESQUINAS[i][1]-y)*(ESQUINAS[i][1]-y));
+		DIST[i][1]=i;
+	}
+	for(j=0;j<=10;j++){
+		for(i=0;i<=10;i++){
+			if(DIST[i][0]>DIST[i+1][0]){
+				aux1=DIST[i][0];
+				aux2=DIST[i][1];
+				DIST[i][0]=DIST[i+1][0];
+				DIST[i][1]=DIST[i+1][1];
+				DIST[i+1][0]=aux1;
+				DIST[i+1][1]=aux2;
+			}
+
+		}
+	}
+	if (x < 420 || x > 1790 || y < 540 || y > 1580){
+	    vet[0] = vet[1] = DIST[0][1];
+	    return;
+	}
+	vet[0]=DIST[0][1];
+	vet[1]=DIST[1][1];
+
+}
+
+unsigned short escolhe_esquina(unsigned short posx_final, unsigned short posy_final, unsigned short posx_inicial, unsigned short posy_inicial){
+    char i;
+    unsigned short indices[2];
+    unsigned int distancias[2];
+	esquinas_mais_proximas(posx_inicial,posy_inicial,indices);
+	
+	for(i=0;i<=1;i++){
+		distancias[i]=((ESQUINAS[indices[i]][0]-posx_final)*(ESQUINAS[indices[i]][0]-posx_final)+(ESQUINAS[indices[i]][1]-posy_final)*(ESQUINAS[indices[i]][1]-posy_final));
+	}
+	if(distancias[0]>distancias[1]){
+	    return indices[1];
+	}else {
+	    return indices[0];
+	}
+}
+
+unsigned int distancia_ao_quadrado(int x1, int y1, int x2, int y2) {
+    return (x2 - x1)*(x2 - x1) + (y2 - y1)*(y2 - y1);
+}
+
+char calcula_caminho(unsigned short esquina_saida, unsigned short esquina_chegada, unsigned short esquinas[]) {
+    char qtd_esquinas = 0;
+    unsigned short esquina_atual = esquina_saida;
+    char visitadas[12] = {0};
+
+    esquinas[qtd_esquinas++] = esquina_atual;
+    visitadas[esquina_atual] = 1;
+
+    while (esquina_atual != esquina_chegada) {
+        unsigned int menor_distancia = -1; 
+        unsigned short proxima_esquina;
+
+        for (unsigned short i = 0; i < 12; i++) {
+            if (visitadas[i]) continue;
+
+            // Verifica se a esquina i está na mesma linha ou coluna que a esquina atual
+            if (ESQUINAS[i][0] != ESQUINAS[esquina_atual][0] && ESQUINAS[i][1] != ESQUINAS[esquina_atual][1]) continue;
+
+            unsigned int dist_saida = distancia_ao_quadrado(ESQUINAS[esquina_atual][0], ESQUINAS[esquina_atual][1], ESQUINAS[i][0], ESQUINAS[i][1]);
+            unsigned int dist_chegada = distancia_ao_quadrado(ESQUINAS[i][0], ESQUINAS[i][1], ESQUINAS[esquina_chegada][0], ESQUINAS[esquina_chegada][1]);
+
+            if (dist_saida + dist_chegada < menor_distancia) {
+                menor_distancia = dist_saida + dist_chegada;
+                proxima_esquina = i;
+            }
+        }
+
+        // Verifica se a próxima esquina está na mesma linha ou coluna que a esquina de chegada
+        if (ESQUINAS[proxima_esquina][0] == ESQUINAS[esquina_chegada][0] || ESQUINAS[proxima_esquina][1] == ESQUINAS[esquina_chegada][1]) {
+            // Se a próxima esquina estiver na mesma linha ou coluna que a esquina de chegada, visita todas as esquinas intermediárias
+            for (unsigned short i = 0; i < 12; i++) {
+                if (visitadas[i]) continue;
+
+                if ((ESQUINAS[i][0] == ESQUINAS[esquina_atual][0] && ESQUINAS[i][0] == ESQUINAS[proxima_esquina][0] && 
+                     ((ESQUINAS[i][1] > ESQUINAS[esquina_atual][1] && ESQUINAS[i][1] < ESQUINAS[proxima_esquina][1]) || 
+                      (ESQUINAS[i][1] < ESQUINAS[esquina_atual][1] && ESQUINAS[i][1] > ESQUINAS[proxima_esquina][1]))) ||
+                    (ESQUINAS[i][1] == ESQUINAS[esquina_atual][1] && ESQUINAS[i][1] == ESQUINAS[proxima_esquina][1] && 
+                     ((ESQUINAS[i][0] > ESQUINAS[esquina_atual][0] && ESQUINAS[i][0] < ESQUINAS[proxima_esquina][0]) || 
+                      (ESQUINAS[i][0] < ESQUINAS[esquina_atual][0] && ESQUINAS[i][0] > ESQUINAS[proxima_esquina][0])))) {
+                    esquinas[qtd_esquinas++] = esquina_atual = i;
+                    visitadas[i] = 1;
+                }
+            }
+        }
+        esquinas[qtd_esquinas++] = esquina_atual = proxima_esquina;
+        visitadas[proxima_esquina] = 1;
+    }
+    return qtd_esquinas;
+}
+void gps(unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final) {
+    unsigned short esquinas[2];
+    unsigned char i = 0;
+    unsigned int dist1, dist2;
+    esquinas_mais_proximas(x,y,esquinas);
+    dist1 = distancia_ao_quadrado(ESQUINAS[esquinas[0]][0],ESQUINAS[esquinas[0]][1],x_final,y_final);
+    dist2 = distancia_ao_quadrado(ESQUINAS[esquinas[1]][0],ESQUINAS[esquinas[1]][1],x_final,y_final);
+    if (dist1>dist2){
+        if(ESQUINAS[esquinas[0]][0] > ESQUINAS[esquinas[1]][0]){
+            printf("oeste");
+        } else if (ESQUINAS[esquinas[0]][0] < ESQUINAS[esquinas[1]][0]){
+            printf("leste");
+        } else if (ESQUINAS[esquinas[0]][1] > ESQUINAS[esquinas[1]][1]){
+            printf("norte");
+        } else if (ESQUINAS[esquinas[0]][1] < ESQUINAS[esquinas[1]][1]){
+            printf("sul");
+        }
+    }
+    if (dist1<dist2){
+        if(ESQUINAS[esquinas[0]][0] < ESQUINAS[esquinas[1]][0]){
+            printf("oeste");
+        } else if (ESQUINAS[esquinas[0]][0] > ESQUINAS[esquinas[1]][0]){
+            printf("leste");
+        } else if (ESQUINAS[esquinas[0]][1] < ESQUINAS[esquinas[1]][1]){
+            printf("norte");
+        } else if (ESQUINAS[esquinas[0]][1] > ESQUINAS[esquinas[1]][1]){
+            printf("sul");
+        }
+    }
+}
+
+int main() {
+    unsigned short trajeto_passageiro[12], trajeto_destino[12];
+    char qtd_esquinas, esquina_passageiro, esquina_carro, esquina_destino;
+    unsigned short   x_carro = 420, y_carro = 540,
+                     x_passageiro = 400, y_passageiro = 1580, 
+                     x_destino = 1790, y_destino = 540;
+    unsigned char flag_passageiro = 0;
+    
+    int x1 =420, y1 = 750;
+    int x2 =500, y2 = 1060;
+    
+    printf("Carro: (%i, %i)\n", x_carro, y_carro);
+    printf("passageiro: (%i, %i)\n", x_passageiro, y_passageiro);
+    printf("destino: (%i, %i)\n", x_destino, y_destino);
+    
+    esquina_carro = escolhe_esquina(x_passageiro, y_passageiro, x_carro, y_carro);
+    esquina_passageiro = escolhe_esquina(x_carro, y_carro, x_passageiro, y_passageiro);
+    esquina_destino = escolhe_esquina(x_passageiro, y_passageiro, x_destino, y_destino);
+    
+    printf("\nEsquina c: %i\n", esquina_carro);
+    printf("Esquina p: %i\n", esquina_passageiro);
+    printf("Esquina d: %i\n", esquina_destino);
+    
+    qtd_esquinas = calcula_caminho(esquina_carro, esquina_passageiro, trajeto_passageiro);
+    printf("\nCaminho da esquina c a p:\n");
+    for (char i = 0; i < qtd_esquinas; i++) {
+        printf("%hu ",  trajeto_passageiro[i]);
+    }
+    
+    printf("\nNo ponto (%i, %i), deve seguir a ", x1, y1);
+    gps(x1, y1, x_passageiro, y_passageiro);
+    
+    qtd_esquinas = calcula_caminho(esquina_passageiro, esquina_destino, trajeto_destino);
+    printf("\n\nCaminho da esquina p a d:\n");
+    for (char i = 0; i < qtd_esquinas; i++) {
+        printf("%hu ", trajeto_destino[i]);
+    }
+    printf("\nNo ponto (%i, %i), deve seguir a ", x2, y2);
+    gps(x2, y2, x_destino, y_destino);
+
+    return 0;
+}
