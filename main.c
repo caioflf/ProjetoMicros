@@ -521,14 +521,15 @@ char login (char *flagSistema, char *opcaoB, char *motoristaOcupado){
 
 
 void interpreta_serial(){ //interpreta as mensagens enviadas pelo servidor externo
+	unsigned char i;
 	if (serial_global[0] == 'S' && serial_global[1] == 'P' && serial_global[5] !='\0'){	 //Protocolo de posiçao do veículo
-		pos_carro.x = serial_global[2]*16 + serial_global[3];
-		pos_carro.y = serial_global[4]*16 + serial_global[5];
+		posCarroGlobal.x = serial_global[2]*16 + serial_global[3];
+		posCarroGlobal.y = serial_global[4]*16 + serial_global[5];
 		for (i = 0; i < QTD_RUASX; i++){
-			if ((pos_carro.x > RUASX[i] - LARGURA/2) && (pos_carro.x < RUASX[i] + LARGURA/2)) pos_carro.x = RUASX[i];					
+			if ((posCarroGlobal.x  > RUASX[i] - LARGURA/2) && (posCarroGlobal.x  < RUASX[i] + LARGURA/2)) posCarroGlobal.x  = RUASX[i];					
 		}
 		for (i = 0; i < QTD_RUASY; i++){
-			if ((pos_carro.y > RUASY[i] - LARGURA/2) && (pos_carro.y < RUASY[i] + LARGURA/2)) pos_carro.y = RUASY[i];
+			if ((posCarroGlobal.y > RUASY[i] - LARGURA/2) && (posCarroGlobal.y < RUASY[i] + LARGURA/2)) posCarroGlobal.y = RUASY[i];
 		}
 		string_serial("UP");
 		limpa_serial_global();
@@ -561,11 +562,11 @@ void interpreta_serial(){ //interpreta as mensagens enviadas pelo servidor exter
 		limpa_serial_global();
 	}
 	
-	else if(serial_global[0] == 'S' && serial_global[1] == 'I'){		// protocolo de resposta do servidor a comando de inicio de corrida
+	else if(serial_global[0] == 'S' && serial_global[1] == 'I'){		// protocolo de resposta do servidor a comando de inicio de corrida - pegou cliente
 		limpa_serial_global();
 	}
 	
-	else if(serial_global[0] == 'S' && serial_global[1] == 'E'){		// protocolo de resposta do servidor a comando de fim de corrida
+	else if(serial_global[0] == 'S' && serial_global[1] == 'F'){		// protocolo de resposta do servidor a comando de fim de corrida - entregou cliente
 		limpa_serial_global();
 	}
 }
