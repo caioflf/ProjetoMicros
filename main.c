@@ -2,7 +2,7 @@
 #include <avr/interrupt.h>
 
 #define SENHA1 "1234"
-#define SENHA2 "8759"
+#define SENHA2 "000000"
 //display PORTC
 //teclado PORTD e B
 #define RS 4
@@ -12,20 +12,11 @@
 #define botao2 1
 #define botao3 0
 #define FB
-
-#define QTD_RUASX 4
-#define QTD_RUASY 3
-#define LARGURA 20
 unsigned char teclado[4][3]={'1','2','3',
 	'4','5','6',
 	'7','8','9',
 '*','0','#'};
-unsigned int pos_carro_x;
-unsigned int pos_carro_y;
-unsigned int pos_passageiro_x;
-unsigned int pos_passageiro_y;
-unsigned int pos_destino_x;
-unsigned int pos_destino_y;
+
 unsigned char serial_global[12]={'\0'};
 unsigned char contador_global=0;
 
@@ -43,26 +34,31 @@ unsigned short ESQUINAS [12][2] = {
 	1330, 1580,
 1790, 1580 };
 
-unsigned short RUASX [QTD_RUASX] = {420, 860,  1330, 1790};
-unsigned short RUASY [QTD_RUASY] = {540, 1060, 1580};
-
 typedef struct rua{
 	short dist;
 	char indice;
 }Rua;
 
-struct posCarro{
+Rua ruaGlobal;
+
+typedef struct posCarro{
 	short x;
 	short y;
-}pos_carro;
+}posCarro;
 
-struct cliente{
+posCarro posCarroGlobal;
+
+typedef struct cliente{
 	char cod;
 	short pos_saida_x;
 	short pos_saida_y;
 	short pos_destino_x;
 	short pos_destino_y;
-}cliente1;
+}cliente;
+
+cliente bufferCliente;
+
+char flagClienteGlobal;
 
 void atraso_1ms(){
 	TCCR1B = 10;				// CTC prescaler de 8
@@ -416,28 +412,47 @@ char ler_senha(){
 	}
 	return perfil;
 }
-void movimento_manual (){
+void movimento (){
 	char letra, i;
 	for(i=1;i<=4;i++){
 		letra=scan(i);
 		if (letra == '5'){
+			limpa_lcd();
+			letra_lcd('5');
 			string_serial("UM");
 			escreve_serial(0);
 		} else if (letra == '2'){
+			limpa_lcd();
+			letra_lcd('2');
 			string_serial("UM");
 			escreve_serial(1);
 		} else if (letra == '6'){
+			limpa_lcd();
+			letra_lcd('6');
 			string_serial("UM");
 			escreve_serial(2);
 		} else if (letra == '4'){
+			limpa_lcd();
+			letra_lcd('4');
 			string_serial("UM");
 			escreve_serial(3);
 		}		
 	}	
 }
 
+void armazenaCliente(cliente *clientesEspera, char opcaoB){
+	if (opcaoB == 1){
+		clientesEspera[1] = bufferCliente;
+		flagClienteGlobal = 0;
+	}
+	
+}
+
 char ubergs(char *flagSistema, char *opcaoB, char *motoristaOcupado, char flagPerfil){
 	unsigned char verificacao = 0;
+	cliente clientesEspera[5], clienteAtual;
+	flagClienteGlobal = 0;
+	
 	while (1){
 		verificacao = verifica_login();
 		if (verificacao == '*'){
@@ -450,13 +465,11 @@ char ubergs(char *flagSistema, char *opcaoB, char *motoristaOcupado, char flagPe
 			atraso_2s();
 			return 1;
 		}
-		movimento_manual();
-		/*if (sem passageiro) {
-			gps(pos_carro.x, pos_carro.y, x do pass, y do pass);
-		} else if (com passageiro){
-			gps(pos_carro.x, pos_carro.y, x do dest, y do dest);
+		movimento();
+		if (flagClienteGlobal = 1){
+			
 		}
-		*/
+		
 	}
 }
 
@@ -506,24 +519,19 @@ char login (char *flagSistema, char *opcaoB, char *motoristaOcupado){
 
 void interpreta_serial(){ //interpreta as mensagens enviadas pelo servidor externo
 	if (serial_global[0] == 'S' && serial_global[1] == 'P' && serial_global[5] !='\0'){	 //Protocolo de posiçao do veículo
-		pos_carro.x = serial_global[2]*16 + serial_global[3];
-		pos_carro.y = serial_global[4]*16 + serial_global[5];
-		for (i = 0; i < QTD_RUASX; i++){
-			if ((pos_carro.x > RUASX[i] - LARGURA/2) && (pos_carro.x < RUASX[i] + LARGURA/2)) pos_carro.x = RUASX[i];					
-		}
-		for (i = 0; i < QTD_RUASY; i++){
-			if ((pos_carro.y > RUASY[i] - LARGURA/2) && (pos_carro.y < RUASY[i] + LARGURA/2)) pos_carro.y = RUASY[i];
-		}
+		posCarroGlobal.x = serial_global[2]*16 + serial_global[3];
+		posCarroGlobal.y = serial_global[4]*16 + serial_global[5];
 		string_serial("UP");
 		limpa_serial_global();
 	}
 	
 	else if(serial_global[0] == 'S' && serial_global[1] == 'C' && serial_global[10] !='\0'){ //protocolo de chamada de novo cliente
-		cliente1.cod = serial_global[2];
-		cliente1.pos_saida_x = serial_global[3]*16 + serial_global[4];
-		cliente1.pos_saida_y = serial_global[5]*16 + serial_global[6];
-		cliente1.pos_destino_x = serial_global[7]*16 + serial_global[8];
-		cliente1.pos_destino_y = serial_global[9]*16 + serial_global[10];
+		bufferCliente.cod = serial_global[2];
+		bufferCliente.pos_saida_x = serial_global[3]*16 + serial_global[4];
+		bufferCliente.pos_saida_y = serial_global[5]*16 + serial_global[6];
+		bufferCliente.pos_destino_x = serial_global[7]*16 + serial_global[8];
+		bufferCliente.pos_destino_y = serial_global[9]*16 + serial_global[10];
+		flagClienteGlobal = 1;
 		string_serial("UC");
 		limpa_serial_global();
 	}
@@ -764,10 +772,15 @@ int main() {
 
 ISR(USART_RX_vect){ // interrupção de recebimento serial
 	while(!(UCSR0A& (1<<RXC0)));
-	char temp = UDR0;
+	char temp =0;
+	temp = UDR0;
 	serial_global[contador_global] =  temp;
 	contador_global++;
-	interpreta_serial();
+	if (contador_global==11){
+		contador_global =0;
+		limpa_lcd();
+		escreve_lcd(serial_global);
+	}
 }
 
 int main(void){
