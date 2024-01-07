@@ -2,7 +2,7 @@
 #include <avr/interrupt.h>
 
 #define SENHA1 "1234"
-#define SENHA2 "8759"
+#define SENHA2 "000000"
 //display PORTC
 //teclado PORTD e B
 #define RS 4
