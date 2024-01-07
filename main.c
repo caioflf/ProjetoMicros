@@ -12,10 +12,16 @@
 #define botao2 1
 #define botao3 0
 #define FB
+#define QTD_RUASX 4
+#define QTD_RUASY 3
+#define LARGURA 20
+
 unsigned char teclado[4][3]={'1','2','3',
 	'4','5','6',
 	'7','8','9',
 '*','0','#'};
+unsigned short RUASX [QTD_RUASX] = {420, 860,  1330, 1790};
+unsigned short RUASY [QTD_RUASY] = {540, 1060, 1580};
 
 unsigned char serial_global[12]={'\0'};
 unsigned char contador_global=0;
@@ -412,28 +418,20 @@ char ler_senha(){
 	}
 	return perfil;
 }
-void movimento (){
+void movimento_manual (){
 	char letra, i;
 	for(i=1;i<=4;i++){
 		letra=scan(i);
 		if (letra == '5'){
-			limpa_lcd();
-			letra_lcd('5');
 			string_serial("UM");
 			escreve_serial(0);
 		} else if (letra == '2'){
-			limpa_lcd();
-			letra_lcd('2');
 			string_serial("UM");
 			escreve_serial(1);
 		} else if (letra == '6'){
-			limpa_lcd();
-			letra_lcd('6');
 			string_serial("UM");
 			escreve_serial(2);
 		} else if (letra == '4'){
-			limpa_lcd();
-			letra_lcd('4');
 			string_serial("UM");
 			escreve_serial(3);
 		}		
@@ -465,11 +463,16 @@ char ubergs(char *flagSistema, char *opcaoB, char *motoristaOcupado, char flagPe
 			atraso_2s();
 			return 1;
 		}
-		movimento();
+		movimento_manual();
 		if (flagClienteGlobal = 1){
 			
 		}
-		
+		/*if (sem passageiro) {
+			gps(pos_carro.x, pos_carro.y, x do pass, y do pass);
+		} else if (com passageiro){
+			gps(pos_carro.x, pos_carro.y, x do dest, y do dest);
+		}
+		*/		
 	}
 }
 
@@ -519,8 +522,14 @@ char login (char *flagSistema, char *opcaoB, char *motoristaOcupado){
 
 void interpreta_serial(){ //interpreta as mensagens enviadas pelo servidor externo
 	if (serial_global[0] == 'S' && serial_global[1] == 'P' && serial_global[5] !='\0'){	 //Protocolo de posiçao do veículo
-		posCarroGlobal.x = serial_global[2]*16 + serial_global[3];
-		posCarroGlobal.y = serial_global[4]*16 + serial_global[5];
+		pos_carro.x = serial_global[2]*16 + serial_global[3];
+		pos_carro.y = serial_global[4]*16 + serial_global[5];
+		for (i = 0; i < QTD_RUASX; i++){
+			if ((pos_carro.x > RUASX[i] - LARGURA/2) && (pos_carro.x < RUASX[i] + LARGURA/2)) pos_carro.x = RUASX[i];					
+		}
+		for (i = 0; i < QTD_RUASY; i++){
+			if ((pos_carro.y > RUASY[i] - LARGURA/2) && (pos_carro.y < RUASY[i] + LARGURA/2)) pos_carro.y = RUASY[i];
+		}
 		string_serial("UP");
 		limpa_serial_global();
 	}
