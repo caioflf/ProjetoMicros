@@ -728,7 +728,7 @@ void armazenaCliente(cliente *clientesEspera, char opcaoB, char *quantiadeClient
 	return;
 }
 
-void *converteASCII (int valor, char *stringConvertida){
+void converteASCII (int valor, char *stringConvertida){
 	char i = 0, b = 0;
 	int auxiliar = 10;
 	for (i = 0; i < 5; i++){
@@ -775,24 +775,29 @@ void printCliente (char indiceCliente, char indiceInfo, cliente *Cliente){
 		escreve_lcd("Tempo: ");
 		converteASCII(Cliente[indiceCliente].tempoEstimado, stringConvertida);
 		escreve_lcd(stringConvertida);
+		letra_lcd('s');
 		return;
 	}
 	if (indiceInfo == 2){	// dist ate cliente
 		escreve_lcd("Dist.: ");
 		converteASCII(Cliente[indiceCliente].distCliente, stringConvertida);
 		escreve_lcd(stringConvertida);
+		letra_lcd('m');
 		return;
 	}
 	if (indiceInfo == 3){	// dist ate destino
 		escreve_lcd("Trajeto: ");
 		converteASCII(Cliente[indiceCliente].distDestino, stringConvertida);
 		escreve_lcd(stringConvertida);
+		letra_lcd('m');
 		return;
 	}
 }
 
-void printDirecao() {
-
+void printDirecao(char quantidadeClientes) {
+	if (quantidadeClientes){
+	 escreve_lcd("Há Clientes")
+	}
 }
 
 void menu(char *indiceCliente, char *indiceInfo, char quantidadeClientes, cliente *clientesEspera){
@@ -805,7 +810,7 @@ void menu(char *indiceCliente, char *indiceInfo, char quantidadeClientes, client
 			if (*indiceCliente == 1){			// ja estava mostrando o cliente no topo, agora mostra a direção a ser seguida
 				*indiceCliente--;
 				*indiceInfo = 0;
-				printDirecao();
+				printDirecao(quantidadeClientes);
 				return;
 			}
 			*indiceCliente--;
@@ -835,7 +840,7 @@ void menu(char *indiceCliente, char *indiceInfo, char quantidadeClientes, client
 		}
 		if (letra == '\0'){
 			if (*indiceCliente == 0){
-				printDirecao();
+				printDirecao(quantidadeClientes);
 				return;
 			}
 			printCliente(*indiceCliente - 1, *indiceInfo, clientesEspera);
@@ -844,9 +849,15 @@ void menu(char *indiceCliente, char *indiceInfo, char quantidadeClientes, client
 	}
 }
 
-char aceitaCorrida (char indiceCliente){
+char aceitaCorrida (char indiceCliente, cliente *clienteAtual, cliente *clientesEspera, char *estadoMotorista, char motoristaOcupado, char *flagAtendimento){
+	if (*flagAtendimento)
+	return;
+	
 	char letra = scan(4);
 	if (letra == '#'){
+		copiaCliente(clienteAtual, &clientesEspera[indiceCliente]);
+		*flagAtendimento = 1;
+		if (motoristaOcupado == 1)
 		return 1;
 	}
 	if (letra == '*'){
@@ -856,27 +867,33 @@ char aceitaCorrida (char indiceCliente){
 
 char ubergs(char *flagSistema, char *opcaoB, char *motoristaOcupado, char *estadoMotorista, char flagPerfil, cliente *clientesEspera, char *quantidadeClientes){
 	unsigned char verificacao = 0;
+	char flagAtendimento = 0;			//flag que indica se o motorista esta em atendimento
 	flagClienteGlobal = 0;
 	cliente clienteAtual;
-	char indiceCliente = 0, indiceInfo = 0;;
+	char indiceCliente = 0, indiceInfo = 0;
+	*estadoMotorista = 1;
 	
 	while (1){
 		verificacao = verifica_login();
 		if (verificacao == '*'){
 			desligaSistema(flagSistema);
+			*estadoMotorista = 0;
 			return 'd';
 		}
 		if (verificacao == '#'){
 			limpa_lcd();
 			escreve_lcd("Logoff realizado");
+			*estadoMotorista = 0;
 			atraso_2s();
 			return 1;
 		}
 
 		movimento_manual();
 		
-		armazenaCliente(clientesEspera, *opcaoB, quantidadeClientes); //armazena na lista de espera o cliente que esta no buffer
-		flagClienteGlobal = 0;
+		if (*estadoMotorista == 1) {
+			armazenaCliente(clientesEspera, *opcaoB, quantidadeClientes); //armazena na lista de espera o cliente que esta no buffer
+			flagClienteGlobal = 0;
+		}
 		
 		menu(&indiceCliente, &indiceInfo, *quantidadeClientes, clientesEspera);
 		
@@ -911,12 +928,14 @@ char login (char *flagSistema, char *opcaoB, char *motoristaOcupado, char *estad
 		if (perfil == 1){
 			limpa_lcd();
 			escreve_lcd("Perfil 1 Logado!");
+			atraso_2s();
 			perfil = ubergs(flagSistema, opcaoB, motoristaOcupado, estadoMotorista, 1, clientesEspera, &quantidadeClientes);
 			lcdEscreverSenha();
 		}
 		if (perfil == 2){
 			limpa_lcd();
 			escreve_lcd("Perfil 2 Logado!");
+			atraso_2s();
 			perfil = ubergs(flagSistema, opcaoB, motoristaOcupado, estadoMotorista, 2, clientesEspera, &quantidadeClientes);
 			lcdEscreverSenha();
 		}
@@ -1007,7 +1026,7 @@ int main(void){
 	unsigned char verificacao = 0;						// flag de verificacao se é solicitado desligamento ou nao
 	char flagSistema = 0;						// flag pra indicar se o sistema esta ligado ou nao
 	char opcaoB = 2;							// por padrao a opcaoB será 2 = preco; 1 = menor dist até cliente; 3 = menor tempo de corrida
-	char motoristaOcupado = 0;					// flag que apenas o operador 1 pode mudar, se o sistema indica ocupado ou nao em atendimento
+	char motoristaOcupado = 0;					// flag que apenas o operador 1 pode mudar, se o sistema indica ocupado ou nao em atendimento, 
 	char estadoMotorista = 0;					// flag indicando estado do motorisra, 0 = indisponivel, 1 = disnponivel, 2 = ocupado
 	
 	inicia();									//nao liga o display nem configura serial, aguarda comando do usuario
