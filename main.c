@@ -21,25 +21,25 @@ unsigned char teclado[4][3]={'1','2','3',
 	'4','5','6',
 	'7','8','9',
 '*','0','#'};
-unsigned short RUASX [QTD_RUASX] = {378, 814,  1288, 1754}; // centro das ruas horizontais
-unsigned short RUASY [QTD_RUASY] = {484, 1004, 1524};		// centro das ruas verticais
 
 unsigned char serial_global[12]={'\0'};
 unsigned char contador_global=0;
 
-unsigned short ESQUINAS [12][2] = {
-	420, 540,
-	860, 540,
-	1330, 540,
-	1790, 540,
-	420, 1060,
-	860, 1060,
-	1330, 1060,
-	1790, 1060,
-	420, 1580,
-	860, 1580,
-	1330, 1580,
-	1790, 1580 
+unsigned short RUASX [QTD_RUASX] = {378, 814,  1288, 1754}; // centro das ruas horizontais
+unsigned short RUASY [QTD_RUASY] = {484, 1004, 1524};		// centro das ruas verticais
+unsigned short RUAS [12][2] = {
+	378, 484,
+	814, 484,
+	1288, 484,
+	1754, 484,
+	378, 1004,
+	814, 1004,
+	1288, 1004,
+	1754, 1004,
+	378, 1524,
+	814, 1524,
+	1288, 1524,
+	1754, 1524
 };
 
 typedef struct posCarro{
@@ -229,189 +229,189 @@ void ligaSistema(char *flagSistema) {
 }
 
 unsigned int distancia(int x1, int y1, int x2, int y2) {	// calcula dist^2 entre dois pontos
-    return (x2 - x1)*(x2 - x1) + (y2 - y1)*(y2 - y1);
+	return (x2 - x1)*(x2 - x1) + (y2 - y1)*(y2 - y1);
 }
 
 unsigned int modulo (int x){					// modulo de um numero
-    if (x < 0) {
-        return -x;
-    } else {
-        return x;
-    }
+	if (x < 0) {
+		return -x;
+		} else {
+		return x;
+	}
 }
 
 char esquinas_adjacentes (unsigned short x, unsigned short y, unsigned char vet[]){ // descobre as esquinas adjacentes a um ponto
-    unsigned char i, qtd = 0, flag = 0;
-    unsigned short aux = x;
-    
-    while(x >= 1 && x <= 2500 && flag == 0){
-        x++;
-        for (i = 0; i < 12; i++){
-            if (x == RUASX[i] && y == RUASY[i]){
-                vet[qtd] = i;
-                qtd++;
-                flag = 1;
-            }
-        }
-    }
-    flag = 0;
-    x = aux;
-    while(x >= 1 && x <= 2500 && flag == 0){
-        x--;
-        for (i = 0; i < 12; i++){
-            if (x == RUASX[i] && y == RUASY[i]){
-                vet[qtd] = i;
-                qtd++;
-                flag = 1;
-            }
-        }
-    }
-    flag = 0;
-    x = aux;
-    aux = y;
-    while(y >= 1 && y <= 2500 && flag == 0){
-        y++;
-        for (i = 0; i < 12; i++){
-            if (x == RUASX[i] && y == RUASY[i]){
-                vet[qtd] = i;
-                qtd++;
-                flag = 1;
-            }
-        }
-    }
-    flag = 0;
-    y = aux;
-    while(y >= 1 && y <= 2500 && flag == 0){
-        y--;
-        for (i = 0; i < 12; i++){
-            if (x == RUASX[i] && y == RUASY[i]){
-                vet[qtd] = i;
-                qtd++;
-                flag = 1;
-            }
-        }
-    }
-    return qtd;
+	unsigned char i, qtd = 0, flag = 0;
+	unsigned short aux = x;
+	
+	while(x >= 1 && x <= 2500 && flag == 0){
+		x++;
+		for (i = 0; i < 12; i++){
+			if (x == RUAS[i][0] && y == RUAS[i][1]){
+				vet[qtd] = i;
+				qtd++;
+				flag = 1;
+			}
+		}
+	}
+	flag = 0;
+	x = aux;
+	while(x >= 1 && x <= 2500 && flag == 0){
+		x--;
+		for (i = 0; i < 12; i++){
+			if (x == RUAS[i][0] && y == RUAS[i][1]){
+				vet[qtd] = i;
+				qtd++;
+				flag = 1;
+			}
+		}
+	}
+	flag = 0;
+	x = aux;
+	aux = y;
+	while(y >= 1 && y <= 2500 && flag == 0){
+		y++;
+		for (i = 0; i < 12; i++){
+			if (x == RUAS[i][0] && y == RUAS[i][1]){
+				vet[qtd] = i;
+				qtd++;
+				flag = 1;
+			}
+		}
+	}
+	flag = 0;
+	y = aux;
+	while(y >= 1 && y <= 2500 && flag == 0){
+		y--;
+		for (i = 0; i < 12; i++){
+			if (x == RUAS[i][0] && y == RUAS[i][1]){
+				vet[qtd] = i;
+				qtd++;
+				flag = 1;
+			}
+		}
+	}
+	return qtd;
 }
 
 unsigned char escolhe_esquina(unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final){ // escolhe a esquina adjacente mais proxima do destino
-    unsigned char i, esquina, qtd =0;;
-    int menor_dist = 2147483647/2;
-    unsigned char vet[4];
-    qtd = esquinas_adjacentes(x,y,vet);
-    for(i = 0; i< qtd; i++){
-        if (menor_dist > distancia(RUASX[vet[i]], RUASY[vet[i]], x_final, y_final)){
-            menor_dist = distancia(RUASX[vet[i]], RUASY[vet[i]], x_final, y_final);
-            esquina = vet[i];
-        }
-    }
-    return esquina;
+	unsigned char i, esquina, qtd =0;;
+	int menor_dist = 2147483647/2;
+	unsigned char vet[4];
+	qtd = esquinas_adjacentes(x,y,vet);
+	for(i = 0; i< qtd; i++){
+		if (menor_dist > distancia(RUAS[vet[i]][0], RUAS[vet[i]][1], x_final, y_final)){
+			menor_dist = distancia(RUAS[vet[i]][0], RUAS[vet[i]][1], x_final, y_final);
+			esquina = vet[i];
+		}
+	}
+	return esquina;
 }
 
 unsigned char calcula_caminho (unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final, unsigned char trajeto[]){ // calcula as esquinas de um trajeto
-    unsigned char atual, destino, qtd = 0, flag =0, i = 0;
-    destino = escolhe_esquina(x_final,y_final,x,y);
+	unsigned char atual, destino, qtd = 0, flag =0, i = 0;
+	destino = escolhe_esquina(x_final,y_final,x,y);
 	//limpa_lcd();
-    while (!flag){
-        trajeto[i] = escolhe_esquina(x,y,x_final,y_final);
-        x = RUASX[trajeto[i]];
-        y = RUASY[trajeto[i]];
-        i ++;
-        if (x == RUASX[destino] && y == RUASY[destino]){
-            flag = 1;
+	while (!flag){
+		trajeto[i] = escolhe_esquina(x,y,x_final,y_final);
+		x = RUAS[trajeto[i]][0];
+		y = RUAS[trajeto[i]][1];
+		i ++;
+		if (x == RUAS[destino][0] && y == RUAS[destino][1]){
+			flag = 1;
 			//escreve_lcd("123");
-        }
-    }
-    return i;
+		}
+	}
+	return i;
 }
 
 unsigned int calcula_distancia(unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final){	// calcula a distancia de um trajeto
-    unsigned char qtd, i, trajeto[10];
-    unsigned int distancia;
-    qtd = calcula_caminho (x, y, x_final, y_final, trajeto);
-    
-    distancia = modulo(x - RUASX[trajeto[0]] + y - RUASY[trajeto[0]]);
-    distancia = distancia + modulo (x_final - RUASX[trajeto[qtd-1]] + y_final - RUASY[trajeto[qtd-1]]);
+	unsigned char qtd, i, trajeto[10];
+	unsigned int distancia;
+	qtd = calcula_caminho (x, y, x_final, y_final, trajeto);
+	
+	distancia = modulo(x - RUAS[trajeto[0]][0] + y - RUAS[trajeto[0]][1]);
+	distancia = distancia + modulo (x_final - RUAS[trajeto[qtd-1]][0] + y_final - RUAS[trajeto[qtd-1]][1]);
 
-    for (i = 0; i < qtd-1; i++){
-        distancia = distancia + modulo(RUASX[trajeto[i]] - RUASX[trajeto[i+1]] + RUASY[trajeto[i]] - RUASY[trajeto[i+1]]);
-    }
-    return distancia;
+	for (i = 0; i < qtd-1; i++){
+		distancia = distancia + modulo(RUAS[trajeto[i]][0] - RUAS[trajeto[i+1]][0] + RUAS[trajeto[i]][1] - RUAS[trajeto[i+1]][1]);
+	}
+	return distancia;
 }
 
 void gps (unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final){  		// indica o sentido que o carro deve seguir
-    unsigned char vet[4], proxima, sentido;
-    unsigned short x_prox, y_prox;
-    unsigned int dist_destino;
-    proxima = escolhe_esquina(x, y, x_final, y_final);
-    // para ponto atual
-    x_prox = RUASX[proxima];
-    y_prox = RUASY[proxima];
-    if (x == x_final){
-        if (y < y_final){
-            sentido = 'S';
-        } else if (y > y_final){
-            sentido = 'N';
-        } else {
-            sentido = 'D';
-        }
-        
-    } else if (y == y_final){
-        if(x < x_final){
-            sentido = 'L';
-        } else if (x > x_final){
-            sentido = 'O';
-        } else {
-            sentido = 'D';
-        }
-        
-    } else if (x > x_prox){
-        sentido = 'O';
-    } else if (x < x_prox){
-        sentido = 'L';
-    } else if (y > y_prox){
-        sentido = 'N';
-    } else if (y < y_prox){
-        sentido = 'S';
-    }
-   // printf("%c", sentido); // substituir por escreve_lcd
-    dist_destino = calcula_distancia(x,y,x_final,y_final);
-    
-    // para prox ponto
-    if (x != x_final && y != y_final){
-        x = x_prox;
-        y = y_prox;
-        proxima = escolhe_esquina(x, y, x_final, y_final);
-        x_prox = RUASX[proxima];
-        y_prox = RUASY[proxima];
-        if (x == x_final){
-        if (y < y_final){
-            sentido = 'S';
-        } else if (y > y_final){
-            sentido = 'N';
-        } else {
-            sentido = 'D';
-        }
-    } else if (y == y_final){
-        if(x < x_final){
-            sentido = 'L';
-        } else if (x > x_final){
-            sentido = 'O';
-        } else {
-            sentido = 'D';
-        }
-    } else if (x > x_prox){
-        sentido = 'O';
-    } else if (x < x_prox){
-        sentido = 'L';
-    } else if (y > y_prox){
-        sentido = 'N';
-    } else if (y < y_prox){
-        sentido = 'S';
-    }
-   // printf("\nEm %im, siga a %c", modulo(y-y_prox + x-x_prox), sentido); // substituir por escreve_lcd
-    //printf("\nDestino a %im", dist_destino); // substituir por escreve_lcd
-    }
+	unsigned char vet[4], proxima, sentido;
+	unsigned short x_prox, y_prox;
+	unsigned int dist_destino;
+	proxima = escolhe_esquina(x, y, x_final, y_final);
+	// para ponto atual
+	x_prox = RUAS[proxima][0];
+	y_prox = RUAS[proxima][1];
+	if (x == x_final){
+		if (y < y_final){
+			sentido = 'S';
+			} else if (y > y_final){
+			sentido = 'N';
+			} else {
+			sentido = 'D';
+		}
+		
+		} else if (y == y_final){
+		if(x < x_final){
+			sentido = 'L';
+			} else if (x > x_final){
+			sentido = 'O';
+			} else {
+			sentido = 'D';
+		}
+		
+		} else if (x > x_prox){
+		sentido = 'O';
+		} else if (x < x_prox){
+		sentido = 'L';
+		} else if (y > y_prox){
+		sentido = 'N';
+		} else if (y < y_prox){
+		sentido = 'S';
+	}
+	// printf("%c", sentido); // substituir por escreve_lcd
+	dist_destino = calcula_distancia(x,y,x_final,y_final);
+	
+	// para prox ponto
+	if (x != x_final && y != y_final){
+		x = x_prox;
+		y = y_prox;
+		proxima = escolhe_esquina(x, y, x_final, y_final);
+		x_prox = RUAS[proxima][0];
+		y_prox = RUAS[proxima][1];
+		if (x == x_final){
+			if (y < y_final){
+				sentido = 'S';
+				} else if (y > y_final){
+				sentido = 'N';
+				} else {
+				sentido = 'D';
+			}
+			} else if (y == y_final){
+			if(x < x_final){
+				sentido = 'L';
+				} else if (x > x_final){
+				sentido = 'O';
+				} else {
+				sentido = 'D';
+			}
+			} else if (x > x_prox){
+			sentido = 'O';
+			} else if (x < x_prox){
+			sentido = 'L';
+			} else if (y > y_prox){
+			sentido = 'N';
+			} else if (y < y_prox){
+			sentido = 'S';
+		}
+		//  printf("\nEm %im, siga a %c", modulo(y-y_prox + x-x_prox), sentido); // substituir por escreve_lcd
+		// printf("\nDestino a %im", dist_destino); // substituir por escreve_lcd
+	}
 }
 /* EXEMPLO DOS CODIGOS ACIMA SENDO USADOS
 int main() { 
