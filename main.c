@@ -69,7 +69,7 @@ typedef struct posCarro{
 posCarro posCarroGlobal;
 
 typedef struct cliente{
-	char cod;
+	unsigned char cod;
 	unsigned short pos_saida_x;
 	unsigned short pos_saida_y;
 	unsigned short pos_destino_x;
@@ -249,9 +249,22 @@ void ligaSistema(char *flagSistema) {
 	}
 }
 
-unsigned int distancia(int x1, int y1, int x2, int y2) {	// calcula dist^2 entre dois pontos
+double distancia(double x1, double y1, double x2, double y2) {
+	double diffX = x2 - x1;
+	double diffY = y2 - y1;
 
-	return (x2 - x1)*(x2 - x1) + (y2 - y1)*(y2 - y1);
+	// Calcula o quadrado da distância
+	double distanciaQuadrada = diffX * diffX + diffY * diffY;
+
+	// Aproximação inicial para a raiz quadrada
+	double aproximacao = distanciaQuadrada / 3.0;
+
+	// Método de Newton para encontrar a raiz quadrada
+	for (int i = 0; i < 50; ++i) {
+		aproximacao = 0.5 * (aproximacao + distanciaQuadrada / aproximacao);
+	}
+
+	return aproximacao;
 }
 
 unsigned int modulo (int x){					// modulo de um numero
@@ -318,7 +331,7 @@ char esquinas_adjacentes (unsigned short x, unsigned short y, unsigned char vet[
 
 unsigned char escolhe_esquina(unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final){ // escolhe a esquina adjacente mais proxima do destino
 	unsigned char i, esquina, qtd =0;;
-	int menor_dist = 2147483647/2;
+	double menor_dist = 10000;
 	unsigned char vet[4];
 	qtd = esquinas_adjacentes(x,y,vet);
 	for(i = 0; i< qtd; i++){
@@ -333,15 +346,14 @@ unsigned char escolhe_esquina(unsigned short x, unsigned short y, unsigned short
 unsigned char calcula_caminho (unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final, unsigned char trajeto[]){ // calcula as esquinas de um trajeto
 	unsigned char atual, destino, qtd = 0, flag =0, i = 0;
 	destino = escolhe_esquina(x_final,y_final,x,y);
-	//limpa_lcd();
 	while (!flag){
 		trajeto[i] = escolhe_esquina(x,y,x_final,y_final);
 		x = RUAS[trajeto[i]][0];
 		y = RUAS[trajeto[i]][1];
 		i ++;
+	
 		if (x == RUAS[destino][0] && y == RUAS[destino][1]){
 			flag = 1;
-			//escreve_lcd("123");
 		}
 	}
 	return i;
@@ -350,6 +362,7 @@ unsigned char calcula_caminho (unsigned short x, unsigned short y, unsigned shor
 unsigned int calcula_distancia(unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final){	// calcula a distancia de um trajeto
 	unsigned char qtd, i, trajeto[10];
 	unsigned int distancia;
+	
 	qtd = calcula_caminho (x, y, x_final, y_final, trajeto);
 	
 	distancia = modulo(x - RUAS[trajeto[0]][0] + y - RUAS[trajeto[0]][1]);
@@ -582,6 +595,59 @@ char compara_string(char* a, char* b){ // 0 se igual, 1 se diferente
 	}
 }
 
+void converteASCII (unsigned int valor, char *stringConvertida){
+	char i = 0, b = 0;
+	if (valor > 65534){
+		stringConvertida[0] = '*';
+		stringConvertida[1] = '\0';
+		return;
+	}
+	if (valor == 0){
+		stringConvertida[0] = '0';
+		stringConvertida[1] = '\0';
+		return;
+	}
+	int divisor = 10;
+	int auxiliar = 0;
+	
+	for (i = 0; i < 5; i++){
+		auxiliar = valor%(divisor);
+		valor -= auxiliar;
+		valor/=10;
+		auxiliar += 48;
+		stringConvertida[i]=auxiliar;
+		auxiliar = 0;
+	}
+	while (stringConvertida[i-1] == '0'){
+		stringConvertida[i-1] = '\0';
+		i--;
+	}
+	i--;
+	
+	char inicio = 0;
+	char fim = i;
+
+	while (inicio < fim){
+		char letraAux = stringConvertida[inicio];
+		stringConvertida[inicio] = stringConvertida[fim];
+		stringConvertida[fim] = letraAux;
+		inicio++;
+		fim--;
+	}
+	
+	if (stringConvertida[0]=='\0')
+	stringConvertida[0] = '0';
+	
+	stringConvertida[5] = '\0';
+	return;
+}
+
+void imprimeASCII (unsigned int valor){
+	char string[6];
+	converteASCII(valor, string);
+	escreve_lcd(string);
+}
+
 char ler_senha(){
 	char perfil = 0; //perfil 0 (senha invalida), perfil 1 (ADM), perfil 2 (OUTRO)
 	char senha[10]={'\0'}, i=0, j=0, letra = '\0';
@@ -661,11 +727,21 @@ void armazenaCliente(cliente *clientesEspera, char opcaoB, char *quantiadeClient
 	if (*quantiadeClientes == 5)	// se tiver todo o vetor preenchido não armazena mais clientes
 	return;
 	
+	char string[6];
+	
+	limpa_lcd();
+	escreve_lcd("entrou");
+	imprimeASCII(*quantiadeClientes);
+	atraso_500ms();
+	limpa_lcd();
+	
+	posCarroGlobal.x = 1754;
+	posCarroGlobal.y = 1500;
 	bufferCliente.distCliente = calcula_distancia(posCarroGlobal.x, posCarroGlobal.y, bufferCliente.pos_saida_x, bufferCliente.pos_saida_y);
 	bufferCliente.distDestino = calcula_distancia(bufferCliente.pos_saida_x, bufferCliente.pos_saida_y, bufferCliente.pos_destino_x, bufferCliente.pos_destino_y);
 	bufferCliente.precoEstimado = estimagemPreco(bufferCliente.distDestino);
 	bufferCliente.tempoEstimado = estimagemTempo(bufferCliente.distDestino);
-
+	
 	int i = 0;	 															//variavel aux
 
 	if (opcaoB == 1){	// armazena ja ordenadamente														
@@ -686,18 +762,26 @@ void armazenaCliente(cliente *clientesEspera, char opcaoB, char *quantiadeClient
 	}
 
 	if (opcaoB == 2){
+		
 		for (i = 0; i < *quantiadeClientes; i++){						// percorre o vetor de clientes
+			
 			if (bufferCliente.precoEstimado > clientesEspera[i].precoEstimado){	// se encontra a posiçao em que deve ser inserido (i)
 				for (int b = *quantiadeClientes; b > i; b--){				// desloca todos os clientes neste indice (i) em diante pra direita
 					copiaCliente(&clientesEspera[b], &clientesEspera[b-1]);
 				}
 				copiaCliente(&clientesEspera[i], &bufferCliente);				// insere o cliente do buffer na posicao (i)
 				*quantiadeClientes++;										// aumenta a quantidade de clientes
+				escreve_lcd("armazenado");
+				comando_lcd(0xC0);
+				escreve_lcd("cliente: ");
+				imprimeASCII(i);
+				atraso_2s();
 				return;													// encerra a funcao
 			}
 		}
+		
 		copiaCliente(&clientesEspera[*quantiadeClientes], &bufferCliente);	// se percorrer todos os clientes e não encontrar uma posicao satisfatoria, copia do buffer no final do vetor
-		*quantiadeClientes++;						
+		*quantiadeClientes+=1;			
 		return;	
 	}
 
@@ -716,7 +800,9 @@ void armazenaCliente(cliente *clientesEspera, char opcaoB, char *quantiadeClient
 		*quantiadeClientes++;						
 		return;	
 	}
-
+	limpa_lcd();
+	escreve_lcd("nada");
+	atraso_1s();
 	return;
 }
 
@@ -736,84 +822,41 @@ void removeCliente(cliente *clienteEspera, char *quantidadeClientes, char *indic
 	return;
 }
 
-void converteASCII (int valor, char *stringConvertida){
-	char i = 0, b = 0;
-	int divisor = 10;
-	int auxiliar = 0;
-	
-	for (i = 0; i < 5; i++){
-		auxiliar = valor%(divisor);
-		valor -= auxiliar;
-		valor/=10;
-		auxiliar += 48;
-		stringConvertida[i]=auxiliar;
-		auxiliar = 0;
-			}
-	while (stringConvertida[i-1] == '0'){
-		stringConvertida[i-1] = '\0';
-		i--;
-	}
-	i--;
-	
-	char inicio = 0;
-	char fim = i;
-
-	while (inicio < fim){
-		char letraAux = stringConvertida[inicio];
-		stringConvertida[inicio] = stringConvertida[fim];
-		stringConvertida[fim] = letraAux;
-		inicio++;
-		fim--;
-	}
-	stringConvertida[5] = '\0';
-	return;
-}
-
 void printCliente (char indiceCliente, char indiceInfo, cliente *Cliente){
-	char stringConvertida[6] = {'\0'};	// considerado que não existira valores maiores que 99.999
 	
 	limpa_lcd();
-	escreve_lcd("Cliente: ");
-	converteASCII(Cliente[indiceCliente].cod, stringConvertida);
-	escreve_lcd(stringConvertida);
+	escreve_lcd("Cliente:");
+	imprimeASCII(Cliente[indiceCliente].cod);
 	comando_lcd(0xC0); // nova linha
 	
 	if (indiceInfo == 0){	//preco estimado
-		escreve_lcd("Preço(cR$): ");
-		converteASCII(Cliente[indiceCliente].precoEstimado, stringConvertida);
-		escreve_lcd(stringConvertida);
+		escreve_lcd("Preco(cR$):");
+		imprimeASCII(Cliente[indiceCliente].precoEstimado);
 		return;
 	}
 	if (indiceInfo == 1){	// tempo estimado
-		escreve_lcd("Tempo: ");
-		converteASCII(Cliente[indiceCliente].tempoEstimado, stringConvertida);
-		escreve_lcd(stringConvertida);
+		escreve_lcd("Tempo:");
+		imprimeASCII(Cliente[indiceCliente].tempoEstimado);
 		letra_lcd('s');
 		return;
 	}
 	if (indiceInfo == 2){	// dist ate cliente
-		escreve_lcd("Dist.: ");
-		converteASCII(Cliente[indiceCliente].distCliente, stringConvertida);
-		escreve_lcd(stringConvertida);
+		escreve_lcd("Dist.:");
+		imprimeASCII(Cliente[indiceCliente].distCliente);
 		letra_lcd('m');
 		return;
 	}
 	if (indiceInfo == 3){	// dist ate destino
-		escreve_lcd("Trajeto: ");
-		converteASCII(Cliente[indiceCliente].distDestino, stringConvertida);
-		escreve_lcd(stringConvertida);
+		escreve_lcd("Trajeto:");
+		imprimeASCII(Cliente[indiceCliente].distDestino);
 		letra_lcd('m');
 		return;
 	}
 }
 
-void printDirecao(char quantidadeClientes) {
+void printDirecao() {
 	limpa_lcd();
-	escreve_lcd("teste");
-	int i = 12345;
-	char teste[6];
-	converteASCII(i, teste);
-	escreve_lcd(teste);
+	escreve_lcd("indice 0");
 	
 }
 
@@ -825,39 +868,47 @@ void menu(char *indiceCliente, char *indiceInfo, char quantidadeClientes, client
 			if (*indiceCliente == 0)			// nao faz nada
 			return;
 			if (*indiceCliente == 1){			// ja estava mostrando o cliente no topo, agora mostra a direção a ser seguida
-				*indiceCliente--;
+				*indiceCliente-=1;
 				*indiceInfo = 0;
-				printDirecao(quantidadeClientes);
+				printDirecao();
 				return;
 			}
-			*indiceCliente--;
+			*indiceCliente-=1;
 			*indiceInfo = 0;
+			limpa_lcd();
 			printCliente(*indiceCliente - 1, *indiceInfo, clientesEspera);
+			imprimeASCII(*indiceCliente);
 			return;
 		}
 		if (letra == '0'){
 			if (*indiceCliente == quantidadeClientes)
 			return;
-			*indiceCliente++;
+			*indiceCliente+=1;
 			*indiceInfo = 0;
+			limpa_lcd();
 			printCliente(*indiceCliente - 1, *indiceInfo, clientesEspera);
+			imprimeASCII(*indiceCliente);
 			return;
 		}
 		if (letra == '7'){
 			if (*indiceInfo == 0)
 			return;
-			*indiceInfo--;
+			if (*indiceCliente == 0)
+			return;
+			*indiceInfo-=1;
 			printCliente(*indiceCliente - 1, *indiceInfo, clientesEspera);
 		}
 		if (letra == '9'){
 			if (*indiceInfo == 3)
 			return;
-			*indiceInfo++;
+			if (*indiceCliente == 0)
+			return;
+			*indiceInfo+=1;
 			printCliente(*indiceCliente - 1, *indiceInfo, clientesEspera);
 		}
-		if (letra == '\0'){
+		if (letra == '\0' && i == 4){
 			if (*indiceCliente == 0){
-				printDirecao(quantidadeClientes);
+				printDirecao();
 				return;
 			}
 			printCliente(*indiceCliente - 1, *indiceInfo, clientesEspera);
@@ -874,7 +925,7 @@ void aceitaCorrida (char *indiceCliente, cliente *clienteAtual, cliente *cliente
 	if (letra == '#'){		// se ele nao esta em atendimento, e aceitou o cliente
 		string_serial('UA');
 		escreve_serial(clientesEspera[*indiceCliente].cod);
-		if (1){ //se servidor responde que cliente aceitou
+		if (1){//se servidor responde que cliente aceitou
 			copiaCliente(clienteAtual, &clientesEspera[*indiceCliente]);	// copia as informacoes do cliente da lista de espera pro cliente atual
 			removeCliente(clientesEspera, quantidadeClientes, indiceCliente);
 			*flagAtendimento = 1;										// levanta a flag que esta em atendimento
@@ -908,6 +959,8 @@ char ubergs(char *flagSistema, char *opcaoB, char *motoristaOcupado, char *estad
 // 	string_serial('UE');
 // 	escreve_serial(1);
 	*estadoMotorista = 1;
+	
+	char k = 0;
 	while (1){	
 		verificacao = verifica_login();
 		if (verificacao == '*'){
@@ -928,13 +981,44 @@ char ubergs(char *flagSistema, char *opcaoB, char *motoristaOcupado, char *estad
 		}
 
 	//	movimento_manual();
+		if (k == 1) {
+			flagClienteGlobal = 1;
+			clientesEspera[0].cod = 100;
+			clientesEspera[0].pos_destino_x = 378;
+			clientesEspera[0].pos_destino_y = 200;
+			clientesEspera[0].pos_saida_x = 1288;
+			clientesEspera[0].pos_saida_y = 900;
+			*quantidadeClientes+=1;
+		}
 		
-// 		if (*estadoMotorista == 1) {		
+		if (k == 2) {
+			flagClienteGlobal = 1;
+			clientesEspera[1].cod = 200;
+			clientesEspera[1].pos_destino_x = 814;
+			clientesEspera[1].pos_destino_y = 1000;
+			clientesEspera[1].pos_saida_x = 90;
+			clientesEspera[1].pos_saida_y = 1004;
+			*quantidadeClientes+=1;
+		}
+		
+		if (k == 3) {
+			flagClienteGlobal = 1;
+			clientesEspera[2].cod = 250;
+			clientesEspera[2].pos_destino_x = 789;
+			clientesEspera[2].pos_destino_y = 484;
+			clientesEspera[2].pos_saida_x = 276;
+			clientesEspera[2].pos_saida_y = 1524;
+			*quantidadeClientes+=1;
+		}
+		if (k < 4){
+		k++;
+		}
+// 		if (*estadoMotorista == 1) {	
 // 			armazenaCliente(clientesEspera, *opcaoB, quantidadeClientes); //armazena na lista de espera o cliente que esta no buffer
 // 			flagClienteGlobal = 0;
 // 		}
-		menu(&indiceCliente, &indiceInfo, *quantidadeClientes, clientesEspera);
 		
+		menu(&indiceCliente, &indiceInfo, *quantidadeClientes, clientesEspera);
 		
 		
 		/*if (sem passageiro) {
@@ -956,7 +1040,8 @@ char login (char *flagSistema, char *opcaoB, char *motoristaOcupado, char *estad
 	char perfil = 0;
 	lcdEscreverSenha();
 	cliente clientesEspera[5];
-	char quantidadeClientes = 0;
+	unsigned char quantidadeClientes = 0;
+	
 	while(1){
 		perfil = ler_senha();
 		if (perfil == 'd'){				//comando de desligar o sistema
@@ -968,6 +1053,7 @@ char login (char *flagSistema, char *opcaoB, char *motoristaOcupado, char *estad
 			escreve_lcd("Perfil 1 Logado!");
 			atraso_2s();
 			perfil = ubergs(flagSistema, opcaoB, motoristaOcupado, estadoMotorista, 1, clientesEspera, &quantidadeClientes);
+			quantidadeClientes = 0;
 			lcdEscreverSenha();
 		}
 		if (perfil == 2){
@@ -975,6 +1061,7 @@ char login (char *flagSistema, char *opcaoB, char *motoristaOcupado, char *estad
 			escreve_lcd("Perfil 2 Logado!");
 			atraso_2s();
 			perfil = ubergs(flagSistema, opcaoB, motoristaOcupado, estadoMotorista, 2, clientesEspera, &quantidadeClientes);
+			quantidadeClientes = 0;
 			lcdEscreverSenha();
 		}
 		if (perfil == 'd'){
