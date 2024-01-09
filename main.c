@@ -77,7 +77,7 @@ typedef struct cliente{
 	unsigned int distCliente;
 	unsigned int distDestino;
 	unsigned short precoEstimado; 
-	unsigned char tempoEstimado;
+	unsigned short tempoEstimado;
 }cliente;
 
 cliente bufferCliente;
@@ -727,14 +727,6 @@ void armazenaCliente(cliente *clientesEspera, char opcaoB, char *quantiadeClient
 	if (*quantiadeClientes == 5)	// se tiver todo o vetor preenchido não armazena mais clientes
 	return;
 	
-	char string[6];
-	
-	limpa_lcd();
-	escreve_lcd("entrou");
-	imprimeASCII(*quantiadeClientes);
-	atraso_500ms();
-	limpa_lcd();
-	
 	posCarroGlobal.x = 1754;
 	posCarroGlobal.y = 1500;
 	bufferCliente.distCliente = calcula_distancia(posCarroGlobal.x, posCarroGlobal.y, bufferCliente.pos_saida_x, bufferCliente.pos_saida_y);
@@ -771,11 +763,7 @@ void armazenaCliente(cliente *clientesEspera, char opcaoB, char *quantiadeClient
 				}
 				copiaCliente(&clientesEspera[i], &bufferCliente);				// insere o cliente do buffer na posicao (i)
 				*quantiadeClientes++;										// aumenta a quantidade de clientes
-				escreve_lcd("armazenado");
-				comando_lcd(0xC0);
-				escreve_lcd("cliente: ");
-				imprimeASCII(i);
-				atraso_2s();
+				
 				return;													// encerra a funcao
 			}
 		}
@@ -800,9 +788,6 @@ void armazenaCliente(cliente *clientesEspera, char opcaoB, char *quantiadeClient
 		*quantiadeClientes++;						
 		return;	
 	}
-	limpa_lcd();
-	escreve_lcd("nada");
-	atraso_1s();
 	return;
 }
 
@@ -864,6 +849,7 @@ void menu(char *indiceCliente, char *indiceInfo, char quantidadeClientes, client
 	char i, letra;
 	for (i = 3; i<=4; i++){
 		letra = scan(i);
+		
 		if (letra == '8'){
 			if (*indiceCliente == 0)			// nao faz nada
 			return;
@@ -983,40 +969,37 @@ char ubergs(char *flagSistema, char *opcaoB, char *motoristaOcupado, char *estad
 	//	movimento_manual();
 		if (k == 1) {
 			flagClienteGlobal = 1;
-			clientesEspera[0].cod = 100;
-			clientesEspera[0].pos_destino_x = 378;
-			clientesEspera[0].pos_destino_y = 200;
-			clientesEspera[0].pos_saida_x = 1288;
-			clientesEspera[0].pos_saida_y = 900;
-			*quantidadeClientes+=1;
+			bufferCliente.cod = 100;
+			bufferCliente.pos_destino_x = 378;
+			bufferCliente.pos_destino_y = 200;
+			bufferCliente.pos_saida_x = 1288;
+			bufferCliente.pos_saida_y = 900;
 		}
 		
 		if (k == 2) {
 			flagClienteGlobal = 1;
-			clientesEspera[1].cod = 200;
-			clientesEspera[1].pos_destino_x = 814;
-			clientesEspera[1].pos_destino_y = 1000;
-			clientesEspera[1].pos_saida_x = 90;
-			clientesEspera[1].pos_saida_y = 1004;
-			*quantidadeClientes+=1;
+			bufferCliente.cod = 200;
+			bufferCliente.pos_destino_x = 814;
+			bufferCliente.pos_destino_y = 1000;
+			bufferCliente.pos_saida_x = 90;
+			bufferCliente.pos_saida_y = 1004;
 		}
 		
 		if (k == 3) {
 			flagClienteGlobal = 1;
-			clientesEspera[2].cod = 250;
-			clientesEspera[2].pos_destino_x = 789;
-			clientesEspera[2].pos_destino_y = 484;
-			clientesEspera[2].pos_saida_x = 276;
-			clientesEspera[2].pos_saida_y = 1524;
-			*quantidadeClientes+=1;
+			bufferCliente.cod = 250;
+			bufferCliente.pos_destino_x = 789;
+			bufferCliente.pos_destino_y = 484;
+			bufferCliente.pos_saida_x = 276;
+			bufferCliente.pos_saida_y = 1524;
 		}
 		if (k < 4){
 		k++;
 		}
-// 		if (*estadoMotorista == 1) {	
-// 			armazenaCliente(clientesEspera, *opcaoB, quantidadeClientes); //armazena na lista de espera o cliente que esta no buffer
-// 			flagClienteGlobal = 0;
-// 		}
+		if (*estadoMotorista == 1) {	
+			armazenaCliente(clientesEspera, *opcaoB, quantidadeClientes); //armazena na lista de espera o cliente que esta no buffer
+			flagClienteGlobal = 0;
+		}
 		
 		menu(&indiceCliente, &indiceInfo, *quantidadeClientes, clientesEspera);
 		
