@@ -874,7 +874,7 @@ void aceitaCorrida (char *indiceCliente, cliente *clienteAtual, cliente *cliente
 	if (letra == '#'){		// se ele nao esta em atendimento, e aceitou o cliente
 		string_serial('UA');
 		escreve_serial(clientesEspera[*indiceCliente].cod);
-		if (se servidor responde que cliente aceitou){
+		if (1){ //se servidor responde que cliente aceitou
 			copiaCliente(clienteAtual, &clientesEspera[*indiceCliente]);	// copia as informacoes do cliente da lista de espera pro cliente atual
 			removeCliente(clientesEspera, quantidadeClientes, indiceCliente);
 			*flagAtendimento = 1;										// levanta a flag que esta em atendimento
