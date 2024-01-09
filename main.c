@@ -2,7 +2,7 @@
 #include <avr/interrupt.h>
 
 #define SENHA1 "1234"
-#define SENHA2 "8759"
+#define SENHA2 "000000"
 //display PORTC
 //teclado PORTD e B
 #define RS 4
@@ -12,20 +12,18 @@
 #define botao2 1
 #define botao3 0
 #define FB
-
 #define QTD_RUASX 4
 #define QTD_RUASY 3
-#define LARGURA 20
+#define LARGURAX 40 // maior espessura de rua vertical
+#define LARGURAY 48	// maior espessura de rua horizontal
+
 unsigned char teclado[4][3]={'1','2','3',
 	'4','5','6',
 	'7','8','9',
 '*','0','#'};
-unsigned int pos_carro_x;
-unsigned int pos_carro_y;
-unsigned int pos_passageiro_x;
-unsigned int pos_passageiro_y;
-unsigned int pos_destino_x;
-unsigned int pos_destino_y;
+unsigned short RUASX [QTD_RUASX] = {378, 814,  1288, 1754}; // centro das ruas horizontais
+unsigned short RUASY [QTD_RUASY] = {484, 1004, 1524};		// centro das ruas verticais
+
 unsigned char serial_global[12]={'\0'};
 unsigned char contador_global=0;
 
@@ -41,28 +39,31 @@ unsigned short ESQUINAS [12][2] = {
 	420, 1580,
 	860, 1580,
 	1330, 1580,
-1790, 1580 };
+	1790, 1580 
+};
 
-unsigned short RUASX [QTD_RUASX] = {420, 860,  1330, 1790};
-unsigned short RUASY [QTD_RUASY] = {540, 1060, 1580};
-
-typedef struct rua{
-	short dist;
-	char indice;
-}Rua;
-
-struct posCarro{
+typedef struct posCarro{
 	short x;
 	short y;
-}pos_carro;
+}posCarro;
 
-struct cliente{
+posCarro posCarroGlobal;
+
+typedef struct cliente{
 	char cod;
 	short pos_saida_x;
 	short pos_saida_y;
 	short pos_destino_x;
 	short pos_destino_y;
-}cliente1;
+	unsigned int distCliente;
+	unsigned int distDestino;
+	unsigned short precoEstimado; 
+	unsigned char tempoEstimado;
+}cliente;
+
+cliente bufferCliente;
+
+char flagClienteGlobal;
 
 void atraso_1ms(){
 	TCCR1B = 10;				// CTC prescaler de 8
@@ -166,6 +167,7 @@ void comando_lcd (unsigned char comando){ // comando em 4bits
 	PORTC &= ~(1<<EN);
 	atraso_40us();
 }
+
 void letra_lcd (unsigned char comando){ // letra em 4bits
 	PORTC |= (1<<RS);					// RS = 1
 	PORTC |= (1<<EN);					// EN = 1
@@ -178,6 +180,7 @@ void letra_lcd (unsigned char comando){ // letra em 4bits
 	PORTC &= ~(1<<EN);
 	atraso_40us();
 }
+
 void escreve_lcd (char  *msg){ // escreve um string no lcd
 	unsigned char i=0;
 	while (msg[i] != 0){
@@ -189,6 +192,7 @@ void limpa_lcd(){
 	comando_lcd(0x01);
 	atraso_1ms64();
 }
+
 void inicia_lcd_4bits(){ // inicializa em 4bits o lcd
 	atraso_15ms();
 	comando_lcd (0x28);
@@ -197,11 +201,13 @@ void inicia_lcd_4bits(){ // inicializa em 4bits o lcd
 	comando_lcd (0x01);
 	atraso_1ms64();
 }
+
 void desliga_lcd_4bits() {
 	atraso_15ms();
 	comando_lcd (0x08);
 	atraso_1ms64();
 }
+
 void desligaSistema (char *desligaSistema) {
 	if (*desligaSistema == 1){
 		desliga_lcd_4bits();
@@ -209,6 +215,7 @@ void desligaSistema (char *desligaSistema) {
 		*desligaSistema = 0;
 	}
 }
+
 void ligaSistema(char *flagSistema) {
 	if (*flagSistema == 0){
 		inicia_lcd_4bits();
@@ -221,22 +228,233 @@ void ligaSistema(char *flagSistema) {
 	}
 }
 
-void calculo_distancia(){
-	// codigo para o calculo da distância
-	
+unsigned int distancia(int x1, int y1, int x2, int y2) {	// calcula dist^2 entre dois pontos
+    return (x2 - x1)*(x2 - x1) + (y2 - y1)*(y2 - y1);
 }
 
-int estimagemPreco (short dist) {
-	int preco = 200;
+unsigned int modulo (int x){					// modulo de um numero
+    if (x < 0) {
+        return -x;
+    } else {
+        return x;
+    }
+}
+
+char esquinas_adjacentes (unsigned short x, unsigned short y, unsigned char vet[]){ // descobre as esquinas adjacentes a um ponto
+    unsigned char i, qtd = 0, flag = 0;
+    unsigned short aux = x;
+    
+    while(x >= 1 && x <= 2500 && flag == 0){
+        x++;
+        for (i = 0; i < 12; i++){
+            if (x == RUASX[i] && y == RUASY[i]){
+                vet[qtd] = i;
+                qtd++;
+                flag = 1;
+            }
+        }
+    }
+    flag = 0;
+    x = aux;
+    while(x >= 1 && x <= 2500 && flag == 0){
+        x--;
+        for (i = 0; i < 12; i++){
+            if (x == RUASX[i] && y == RUASY[i]){
+                vet[qtd] = i;
+                qtd++;
+                flag = 1;
+            }
+        }
+    }
+    flag = 0;
+    x = aux;
+    aux = y;
+    while(y >= 1 && y <= 2500 && flag == 0){
+        y++;
+        for (i = 0; i < 12; i++){
+            if (x == RUASX[i] && y == RUASY[i]){
+                vet[qtd] = i;
+                qtd++;
+                flag = 1;
+            }
+        }
+    }
+    flag = 0;
+    y = aux;
+    while(y >= 1 && y <= 2500 && flag == 0){
+        y--;
+        for (i = 0; i < 12; i++){
+            if (x == RUASX[i] && y == RUASY[i]){
+                vet[qtd] = i;
+                qtd++;
+                flag = 1;
+            }
+        }
+    }
+    return qtd;
+}
+
+unsigned char escolhe_esquina(unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final){ // escolhe a esquina adjacente mais proxima do destino
+    unsigned char i, esquina, qtd =0;;
+    int menor_dist = 2147483647/2;
+    unsigned char vet[4];
+    qtd = esquinas_adjacentes(x,y,vet);
+    for(i = 0; i< qtd; i++){
+        if (menor_dist > distancia(RUASX[vet[i]], RUASY[vet[i]], x_final, y_final)){
+            menor_dist = distancia(RUASX[vet[i]], RUASY[vet[i]], x_final, y_final);
+            esquina = vet[i];
+        }
+    }
+    return esquina;
+}
+
+unsigned char calcula_caminho (unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final, unsigned char trajeto[]){ // calcula as esquinas de um trajeto
+    unsigned char atual, destino, qtd = 0, flag =0, i = 0;
+    destino = escolhe_esquina(x_final,y_final,x,y);
+	//limpa_lcd();
+    while (!flag){
+        trajeto[i] = escolhe_esquina(x,y,x_final,y_final);
+        x = RUASX[trajeto[i]];
+        y = RUASY[trajeto[i]];
+        i ++;
+        if (x == RUASX[destino] && y == RUASY[destino]){
+            flag = 1;
+			//escreve_lcd("123");
+        }
+    }
+    return i;
+}
+
+unsigned int calcula_distancia(unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final){	// calcula a distancia de um trajeto
+    unsigned char qtd, i, trajeto[10];
+    unsigned int distancia;
+    qtd = calcula_caminho (x, y, x_final, y_final, trajeto);
+    
+    distancia = modulo(x - RUASX[trajeto[0]] + y - RUASY[trajeto[0]]);
+    distancia = distancia + modulo (x_final - RUASX[trajeto[qtd-1]] + y_final - RUASY[trajeto[qtd-1]]);
+
+    for (i = 0; i < qtd-1; i++){
+        distancia = distancia + modulo(RUASX[trajeto[i]] - RUASX[trajeto[i+1]] + RUASY[trajeto[i]] - RUASY[trajeto[i+1]]);
+    }
+    return distancia;
+}
+
+void gps (unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final){  		// indica o sentido que o carro deve seguir
+    unsigned char vet[4], proxima, sentido;
+    unsigned short x_prox, y_prox;
+    unsigned int dist_destino;
+    proxima = escolhe_esquina(x, y, x_final, y_final);
+    // para ponto atual
+    x_prox = RUASX[proxima];
+    y_prox = RUASY[proxima];
+    if (x == x_final){
+        if (y < y_final){
+            sentido = 'S';
+        } else if (y > y_final){
+            sentido = 'N';
+        } else {
+            sentido = 'D';
+        }
+        
+    } else if (y == y_final){
+        if(x < x_final){
+            sentido = 'L';
+        } else if (x > x_final){
+            sentido = 'O';
+        } else {
+            sentido = 'D';
+        }
+        
+    } else if (x > x_prox){
+        sentido = 'O';
+    } else if (x < x_prox){
+        sentido = 'L';
+    } else if (y > y_prox){
+        sentido = 'N';
+    } else if (y < y_prox){
+        sentido = 'S';
+    }
+   // printf("%c", sentido); // substituir por escreve_lcd
+    dist_destino = calcula_distancia(x,y,x_final,y_final);
+    
+    // para prox ponto
+    if (x != x_final && y != y_final){
+        x = x_prox;
+        y = y_prox;
+        proxima = escolhe_esquina(x, y, x_final, y_final);
+        x_prox = RUASX[proxima];
+        y_prox = RUASY[proxima];
+        if (x == x_final){
+        if (y < y_final){
+            sentido = 'S';
+        } else if (y > y_final){
+            sentido = 'N';
+        } else {
+            sentido = 'D';
+        }
+    } else if (y == y_final){
+        if(x < x_final){
+            sentido = 'L';
+        } else if (x > x_final){
+            sentido = 'O';
+        } else {
+            sentido = 'D';
+        }
+    } else if (x > x_prox){
+        sentido = 'O';
+    } else if (x < x_prox){
+        sentido = 'L';
+    } else if (y > y_prox){
+        sentido = 'N';
+    } else if (y < y_prox){
+        sentido = 'S';
+    }
+   // printf("\nEm %im, siga a %c", modulo(y-y_prox + x-x_prox), sentido); // substituir por escreve_lcd
+    //printf("\nDestino a %im", dist_destino); // substituir por escreve_lcd
+    }
+}
+/* EXEMPLO DOS CODIGOS ACIMA SENDO USADOS
+int main() { 
+    unsigned char i, qtd, vet[4], esquina_carro, esquina_pass1, esquina_pass2, esquina_desti, trajeto[10];
+    unsigned short  x_carro = 1450, y_carro = 1060,
+                    x_passageiro = 420, y_passageiro = 510,
+                    x_desti = 480, y_desti = 1580,
+                    x = 1200, y = 1060;
+    
+    esquina_carro = escolhe_esquina(x_carro, y_carro, x_passageiro, y_passageiro);
+    esquina_pass1 = escolhe_esquina(x_passageiro, y_passageiro, x_carro, y_carro);
+    esquina_pass2 = escolhe_esquina(x_passageiro, y_passageiro, x_desti, y_desti);
+    esquina_desti = escolhe_esquina(x_desti, y_desti, x_passageiro, y_passageiro);
+    //printf("\n\nEsquina Carro = %i\nEsquina Pass1 = %i\nEsquina Pass2 = %i\nEsquina Desti = %i\n\n", esquina_carro, esquina_pass1, esquina_pass2, esquina_desti);
+    
+    qtd = calcula_caminho(x_carro, y_carro, x_passageiro, y_passageiro, trajeto);
+    for (i = 0; i < qtd; i++){
+        printf("%i ", trajeto[i]); // substituir por escreve_lcd
+    }
+
+    qtd = calcula_caminho(x_passageiro, y_passageiro, x_desti, y_desti, trajeto);
+    for (i = 0; i < qtd; i++){
+        printf("%i ", trajeto[i]); // substituir por escreve_lcd
+    }
+    printf("\n\nDist até o passageiro: %im",calcula_distancia(x_carro, y_carro, x_passageiro, y_passageiro)); // substituir por escreve_lcd
+    printf("\nDist até o destino: %im\n\n",calcula_distancia(x_passageiro, y_passageiro, x_desti, y_desti)); // substituir por escreve_lcd
+    printf("Em (%i, %i) seguir a: ", x,y); // substituir por escreve_lcd
+    gps(x,y, x_passageiro, y_passageiro);
+    
+    return 0;
+}
+*/
+
+
+unsigned short estimagemPreco (unsigned int dist) {		// preço em centavos
+	int preco = 200;	
 	preco += (12*dist)/100;  // preço do km percorrido
 	preco += (dist/139)*5;   // preço do tempo (138,88 m/10s)
 	return preco;
 }
 
-char aceitaCorrida (short dist, int preco){
-	char comando;
-	
-	return comando;
+unsigned char estimagemTempo (unsigned int dist) {
+	return dist/14; 		//50km/h = 13,88 m/s ; arredondei para 14 m/s para fins de aproximaçao
 }
 
 unsigned char debounce(unsigned char num_bit){
@@ -357,8 +575,7 @@ void inicia(){
 	limpa_lcd();
 }
 
-char compara_string(char* a, char* b) // 0 se igual, 1 se diferente
-{
+char compara_string(char* a, char* b){ // 0 se igual, 1 se diferente
 	char flag = 0;
 	while (*a != '\0' || *b != '\0') {
 		if (*a == *b) {
@@ -416,6 +633,7 @@ char ler_senha(){
 	}
 	return perfil;
 }
+
 void movimento_manual (){
 	char letra, i;
 	for(i=1;i<=4;i++){
@@ -436,27 +654,264 @@ void movimento_manual (){
 	}	
 }
 
-char ubergs(char *flagSistema, char *opcaoB, char *motoristaOcupado, char flagPerfil){
+void copiaCliente(cliente *clienteDestino, cliente *clienteOrigem){
+	clienteDestino->cod = clienteOrigem->cod;
+	clienteDestino->distCliente = clienteOrigem->distCliente;
+	clienteDestino->distDestino = clienteOrigem->distDestino;
+	clienteDestino->pos_destino_x = clienteOrigem->pos_destino_x;
+	clienteDestino->pos_destino_y = clienteOrigem->pos_destino_y;
+	clienteDestino->pos_saida_x = clienteOrigem->pos_saida_x;
+	clienteDestino->pos_saida_y = clienteOrigem->pos_saida_y;
+}
+
+void armazenaCliente(cliente *clientesEspera, char opcaoB, char *quantiadeClientes){
+	
+	if (!flagClienteGlobal)
+	return;
+	
+	if (*quantiadeClientes == 5)	// se tiver todo o vetor preenchido não armazena mais clientes
+	return;
+	
+	
+	bufferCliente.distCliente = calcula_distancia(posCarroGlobal.x, posCarroGlobal.y, bufferCliente.pos_saida_x, bufferCliente.pos_saida_y);
+	bufferCliente.distDestino = calcula_distancia(bufferCliente.pos_saida_x, bufferCliente.pos_saida_y, bufferCliente.pos_destino_x, bufferCliente.pos_destino_y);	
+	bufferCliente.precoEstimado = estimagemPreco(bufferCliente.distDestino);
+	bufferCliente.tempoEstimado = estimagemTempo(bufferCliente.distDestino);
+	limpa_lcd();
+	escreve_lcd("123");
+	
+	int i = 0;	 															//variavel aux
+
+	if (opcaoB == 1){	// armazena ja ordenadamente														
+		for (i = 0; i < *quantiadeClientes; i++){						// percorre o vetor de clientes
+			if (bufferCliente.distCliente < clientesEspera[i].distCliente){	// se encontra a posiçao em que deve ser inserido (i)
+				for (int b = *quantiadeClientes; b > i; b--){				// desloca todos os clientes neste indice (i) em diante pra direita
+					copiaCliente(&clientesEspera[b], &clientesEspera[b-1]);
+				}
+				copiaCliente(&clientesEspera[i], &bufferCliente);				// insere o cliente do buffer na posicao (i)
+				*quantiadeClientes++;										// aumenta a quantidade de clientes
+				flagClienteGlobal = 0;
+				return;													// encerra a funcao
+			}
+		}
+		copiaCliente(&clientesEspera[*quantiadeClientes], &bufferCliente);	// se percorrer todos os clientes e não encontrar uma posicao satisfatoria, copia do buffer no final do vetor
+		*quantiadeClientes++;							
+		return;
+	}
+
+	if (opcaoB == 2){
+		for (i = 0; i < *quantiadeClientes; i++){						// percorre o vetor de clientes
+			if (bufferCliente.precoEstimado > clientesEspera[i].precoEstimado){	// se encontra a posiçao em que deve ser inserido (i)
+				for (int b = *quantiadeClientes; b > i; b--){				// desloca todos os clientes neste indice (i) em diante pra direita
+					copiaCliente(&clientesEspera[b], &clientesEspera[b-1]);
+				}
+				copiaCliente(&clientesEspera[i], &bufferCliente);				// insere o cliente do buffer na posicao (i)
+				*quantiadeClientes++;										// aumenta a quantidade de clientes
+				return;													// encerra a funcao
+			}
+		}
+		copiaCliente(&clientesEspera[*quantiadeClientes], &bufferCliente);	// se percorrer todos os clientes e não encontrar uma posicao satisfatoria, copia do buffer no final do vetor
+		*quantiadeClientes++;						
+		return;	
+	}
+
+	if (opcaoB == 3){
+		for (i = 0; i < *quantiadeClientes; i++){						// percorre o vetor de clientes
+			if (bufferCliente.tempoEstimado < clientesEspera[i].tempoEstimado){	// se encontra a posiçao em que deve ser inserido (i)
+				for (int b = *quantiadeClientes; b > i; b--){				// desloca todos os clientes neste indice (i) em diante pra direita
+					copiaCliente(&clientesEspera[b], &clientesEspera[b-1]);
+				}
+				copiaCliente(&clientesEspera[i], &bufferCliente);				// insere o cliente do buffer na posicao (i)
+				*quantiadeClientes++;										// aumenta a quantidade de clientes
+				return;													// encerra a funcao
+			}
+		}
+		copiaCliente(&clientesEspera[*quantiadeClientes], &bufferCliente);	// se percorrer todos os clientes e não encontrar uma posicao satisfatoria, copia do buffer no final do vetor
+		*quantiadeClientes++;						
+		return;	
+	}
+
+	return;
+}
+
+void converteASCII (int valor, char *stringConvertida){
+	char i = 0, b = 0;
+	int auxiliar = 10;
+	for (i = 0; i < 5; i++){
+		
+		if (!i) {
+		stringConvertida[i] = valor%(auxiliar) + 48;
+		auxiliar*=10;
+		}
+		
+		if (i) {
+			if (valor%auxiliar) {
+				stringConvertida[i] = valor%(auxiliar) + 48;
+				for (b = i-1; b >= 0; b--){
+					stringConvertida[i] -= stringConvertida[b] + 48;
+				}
+				auxiliar*=10;
+			}
+			else{
+				stringConvertida[i] = '\0';
+				return;
+			}
+		}
+	}
+	stringConvertida[i] = '\0';
+	return;
+}
+
+void printCliente (char indiceCliente, char indiceInfo, cliente *Cliente){
+	char stringConvertida[6];	// considerado que não existira valores maiores que 99.999
+	
+	limpa_lcd();
+	escreve_lcd("Cliente: ");
+	converteASCII(Cliente[indiceCliente].cod, stringConvertida);
+	escreve_lcd(stringConvertida);
+	comando_lcd(0xC0); // nova linha
+	
+	if (indiceInfo == 0){	//preco estimado
+		escreve_lcd("Preço(cR$): ");
+		converteASCII(Cliente[indiceCliente].precoEstimado, stringConvertida);
+		escreve_lcd(stringConvertida);
+		return;
+	}
+	if (indiceInfo == 1){	// tempo estimado
+		escreve_lcd("Tempo: ");
+		converteASCII(Cliente[indiceCliente].tempoEstimado, stringConvertida);
+		escreve_lcd(stringConvertida);
+		letra_lcd('s');
+		return;
+	}
+	if (indiceInfo == 2){	// dist ate cliente
+		escreve_lcd("Dist.: ");
+		converteASCII(Cliente[indiceCliente].distCliente, stringConvertida);
+		escreve_lcd(stringConvertida);
+		letra_lcd('m');
+		return;
+	}
+	if (indiceInfo == 3){	// dist ate destino
+		escreve_lcd("Trajeto: ");
+		converteASCII(Cliente[indiceCliente].distDestino, stringConvertida);
+		escreve_lcd(stringConvertida);
+		letra_lcd('m');
+		return;
+	}
+}
+
+void printDirecao(char quantidadeClientes) {
+	if (quantidadeClientes){
+		limpa_lcd();
+		escreve_lcd("Há Clientes");
+	}
+}
+
+void menu(char *indiceCliente, char *indiceInfo, char quantidadeClientes, cliente *clientesEspera){
+	char i, letra;
+	for (i = 3; i<=4; i++){
+		letra = scan(i);
+		if (letra == '8'){
+			if (*indiceCliente == 0)			// nao faz nada
+			return;
+			if (*indiceCliente == 1){			// ja estava mostrando o cliente no topo, agora mostra a direção a ser seguida
+				*indiceCliente--;
+				*indiceInfo = 0;
+				printDirecao(quantidadeClientes);
+				return;
+			}
+			*indiceCliente--;
+			*indiceInfo = 0;
+			printCliente(*indiceCliente - 1, *indiceInfo, clientesEspera);
+			return;
+		}
+		if (letra == '0'){
+			if (*indiceCliente == quantidadeClientes)
+			return;
+			*indiceCliente++;
+			*indiceInfo = 0;
+			printCliente(*indiceCliente - 1, *indiceInfo, clientesEspera);
+			return;
+		}
+		if (letra == '7'){
+			if (*indiceInfo == 0)
+			return;
+			*indiceInfo--;
+			printCliente(*indiceCliente - 1, *indiceInfo, clientesEspera);
+		}
+		if (letra == '9'){
+			if (*indiceInfo == 3)
+			return;
+			*indiceInfo++;
+			printCliente(*indiceCliente - 1, *indiceInfo, clientesEspera);
+		}
+		if (letra == '\0'){
+			if (*indiceCliente == 0){
+				printDirecao(quantidadeClientes);
+				return;
+			}
+			printCliente(*indiceCliente - 1, *indiceInfo, clientesEspera);
+			return;
+		}
+	}
+}
+
+char aceitaCorrida (char indiceCliente, cliente *clienteAtual, cliente *clientesEspera, char *estadoMotorista, char motoristaOcupado, char *flagAtendimento){
+	if (*flagAtendimento)
+	return;
+	
+	char letra = scan(4);
+	if (letra == '#'){
+		copiaCliente(clienteAtual, &clientesEspera[indiceCliente]);
+		*flagAtendimento = 1;
+		if (motoristaOcupado == 1)
+		return 1;
+	}
+	if (letra == '*'){
+		return 0;
+	}
+}
+
+char ubergs(char *flagSistema, char *opcaoB, char *motoristaOcupado, char *estadoMotorista, char flagPerfil, cliente *clientesEspera, char *quantidadeClientes){
 	unsigned char verificacao = 0;
+	char flagAtendimento = 0;			//flag que indica se o motorista esta em atendimento
+	flagClienteGlobal = 0;
+	cliente clienteAtual;
+	char indiceCliente = 0, indiceInfo = 0;
+	*estadoMotorista = 1;
+	
 	while (1){
 		verificacao = verifica_login();
 		if (verificacao == '*'){
 			desligaSistema(flagSistema);
+			*estadoMotorista = 0;
 			return 'd';
 		}
 		if (verificacao == '#'){
 			limpa_lcd();
 			escreve_lcd("Logoff realizado");
+			*estadoMotorista = 0;
 			atraso_2s();
 			return 1;
 		}
+
 		movimento_manual();
+		
+		if (*estadoMotorista == 1) {
+			armazenaCliente(clientesEspera, *opcaoB, quantidadeClientes); //armazena na lista de espera o cliente que esta no buffer
+			flagClienteGlobal = 0;
+		}
+		
+		//menu(&indiceCliente, &indiceInfo, *quantidadeClientes, clientesEspera);
+		
+		
+		
 		/*if (sem passageiro) {
 			gps(pos_carro.x, pos_carro.y, x do pass, y do pass);
 		} else if (com passageiro){
 			gps(pos_carro.x, pos_carro.y, x do dest, y do dest);
 		}
-		*/
+		*/		
 	}
 }
 
@@ -466,9 +921,11 @@ void lcdEscreverSenha(){
 	comando_lcd(0xC0); // nova linha
 }
 
-char login (char *flagSistema, char *opcaoB, char *motoristaOcupado){
+char login (char *flagSistema, char *opcaoB, char *motoristaOcupado, char *estadoMotorista){
 	char perfil = 0;
 	lcdEscreverSenha();
+	cliente clientesEspera[5];
+	char quantidadeClientes = 0;
 	while(1){
 		perfil = ler_senha();
 		if (perfil == 'd'){				//comando de desligar o sistema
@@ -478,13 +935,15 @@ char login (char *flagSistema, char *opcaoB, char *motoristaOcupado){
 		if (perfil == 1){
 			limpa_lcd();
 			escreve_lcd("Perfil 1 Logado!");
-			perfil = ubergs(flagSistema, opcaoB, motoristaOcupado, 1);
+			atraso_2s();
+			perfil = ubergs(flagSistema, opcaoB, motoristaOcupado, estadoMotorista, 1, clientesEspera, &quantidadeClientes);
 			lcdEscreverSenha();
 		}
 		if (perfil == 2){
 			limpa_lcd();
 			escreve_lcd("Perfil 2 Logado!");
-			perfil = ubergs(flagSistema, opcaoB, motoristaOcupado, 2);
+			atraso_2s();
+			perfil = ubergs(flagSistema, opcaoB, motoristaOcupado, estadoMotorista, 2, clientesEspera, &quantidadeClientes);
 			lcdEscreverSenha();
 		}
 		if (perfil == 'd'){
@@ -505,25 +964,27 @@ char login (char *flagSistema, char *opcaoB, char *motoristaOcupado){
 
 
 void interpreta_serial(){ //interpreta as mensagens enviadas pelo servidor externo
+	unsigned char i;
 	if (serial_global[0] == 'S' && serial_global[1] == 'P' && serial_global[5] !='\0'){	 //Protocolo de posiçao do veículo
-		pos_carro.x = serial_global[2]*16 + serial_global[3];
-		pos_carro.y = serial_global[4]*16 + serial_global[5];
+		posCarroGlobal.x = serial_global[2]*16 + serial_global[3];
+		posCarroGlobal.y = serial_global[4]*16 + serial_global[5];
 		for (i = 0; i < QTD_RUASX; i++){
-			if ((pos_carro.x > RUASX[i] - LARGURA/2) && (pos_carro.x < RUASX[i] + LARGURA/2)) pos_carro.x = RUASX[i];					
+			if ((posCarroGlobal.x  > RUASX[i] - LARGURAX/2) && (posCarroGlobal.x  < RUASX[i] + LARGURAX/2)) posCarroGlobal.x  = RUASX[i];
 		}
 		for (i = 0; i < QTD_RUASY; i++){
-			if ((pos_carro.y > RUASY[i] - LARGURA/2) && (pos_carro.y < RUASY[i] + LARGURA/2)) pos_carro.y = RUASY[i];
+			if ((posCarroGlobal.y > RUASY[i] - LARGURAY/2) && (posCarroGlobal.y < RUASY[i] + LARGURAY/2)) posCarroGlobal.y = RUASY[i];
 		}
 		string_serial("UP");
 		limpa_serial_global();
 	}
 	
 	else if(serial_global[0] == 'S' && serial_global[1] == 'C' && serial_global[10] !='\0'){ //protocolo de chamada de novo cliente
-		cliente1.cod = serial_global[2];
-		cliente1.pos_saida_x = serial_global[3]*16 + serial_global[4];
-		cliente1.pos_saida_y = serial_global[5]*16 + serial_global[6];
-		cliente1.pos_destino_x = serial_global[7]*16 + serial_global[8];
-		cliente1.pos_destino_y = serial_global[9]*16 + serial_global[10];
+		bufferCliente.cod = serial_global[2];
+		bufferCliente.pos_saida_x = serial_global[3]*16 + serial_global[4];
+		bufferCliente.pos_saida_y = serial_global[5]*16 + serial_global[6];
+		bufferCliente.pos_destino_x = serial_global[7]*16 + serial_global[8];
+		bufferCliente.pos_destino_y = serial_global[9]*16 + serial_global[10];
+		flagClienteGlobal = 1;
 		string_serial("UC");
 		limpa_serial_global();
 	}
@@ -544,227 +1005,20 @@ void interpreta_serial(){ //interpreta as mensagens enviadas pelo servidor exter
 		limpa_serial_global();
 	}
 	
-	else if(serial_global[0] == 'S' && serial_global[1] == 'I'){		// protocolo de resposta do servidor a comando de inicio de corrida
+	else if(serial_global[0] == 'S' && serial_global[1] == 'I'){		// protocolo de resposta do servidor a comando de inicio de corrida - pegou cliente
 		limpa_serial_global();
 	}
 	
-	else if(serial_global[0] == 'S' && serial_global[1] == 'E'){		// protocolo de resposta do servidor a comando de fim de corrida
+	else if(serial_global[0] == 'S' && serial_global[1] == 'F'){		// protocolo de resposta do servidor a comando de fim de corrida - entregou cliente
 		limpa_serial_global();
 	}
 }
-unsigned int distancia(int x1, int y1, int x2, int y2) {	// calcula dist^2 entre dois pontos
-    return (x2 - x1)*(x2 - x1) + (y2 - y1)*(y2 - y1);
-}
-unsigned int modulo (int x){					// modulo de um numero
-    if (x < 0) {
-        return -x;
-    } else {
-        return x;
-    }
-}
-char esquinas_adjacentes (unsigned short x, unsigned short y, unsigned char vet[]){ // descobre as esquinas adjacentes a um ponto
-    unsigned char i, qtd = 0, flag = 0;
-    unsigned short aux = x;
-    
-    while(x >= 1 && x <= 2500 && flag == 0){
-        x++;
-        for (i = 0; i < 12; i++){
-            if (x == ESQUINAS[i][0] && y == ESQUINAS[i][1]){
-                vet[qtd] = i;
-                qtd++;
-                flag = 1;
-            }
-        }
-    }
-    flag = 0;
-    x = aux;
-    while(x >= 1 && x <= 2500 && flag == 0){
-        x--;
-        for (i = 0; i < 12; i++){
-            if (x == ESQUINAS[i][0] && y == ESQUINAS[i][1]){
-                vet[qtd] = i;
-                qtd++;
-                flag = 1;
-            }
-        }
-    }
-    flag = 0;
-    x = aux;
-    aux = y;
-    while(y >= 1 && y <= 2500 && flag == 0){
-        y++;
-        for (i = 0; i < 12; i++){
-            if (x == ESQUINAS[i][0] && y == ESQUINAS[i][1]){
-                vet[qtd] = i;
-                qtd++;
-                flag = 1;
-            }
-        }
-    }
-    flag = 0;
-    y = aux;
-    while(y >= 1 && y <= 2500 && flag == 0){
-        y--;
-        for (i = 0; i < 12; i++){
-            if (x == ESQUINAS[i][0] && y == ESQUINAS[i][1]){
-                vet[qtd] = i;
-                qtd++;
-                flag = 1;
-            }
-        }
-    }
-    return qtd;
-}
-unsigned char escolhe_esquina(unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final){ // escolhe a esquina adjacente mais proxima do destino
-    unsigned char i, esquina, qtd =0;;
-    int menor_dist = 2147483647/2;
-    unsigned char vet[4];
-    qtd = esquinas_adjacentes(x,y,vet);
-    for(i = 0; i< qtd; i++){
-        if (menor_dist > distancia(ESQUINAS[vet[i]][0], ESQUINAS[vet[i]][1], x_final, y_final)){
-            menor_dist = distancia(ESQUINAS[vet[i]][0], ESQUINAS[vet[i]][1], x_final, y_final);
-            esquina = vet[i];
-        }
-    }
-    return esquina;
-}
-unsigned char calcula_caminho (unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final, unsigned char trajeto[]){ // calcula as esquinas de um trajeto
-    unsigned char atual, destino, qtd = 0, flag =0, i = 0;
-    destino = escolhe_esquina(x_final,y_final,x,y);
 
-    while (!flag){
-        trajeto[i] = escolhe_esquina(x,y,x_final,y_final);
-        x = ESQUINAS[trajeto[i]][0];
-        y = ESQUINAS[trajeto[i]][1];
-        i ++;
-        if (x == ESQUINAS[destino][0] && y == ESQUINAS[destino][1]){
-            flag = 1;
-        }
-    }
-    return i;
-}
-unsigned int calcula_distancia(unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final){	// calcula a distancia de um trajeto
-    unsigned char qtd, i, trajeto[10];
-    unsigned int distancia;
-    qtd = calcula_caminho (x, y, x_final, y_final, trajeto);
-    
-    distancia = modulo(x - ESQUINAS[trajeto[0]][0] + y - ESQUINAS[trajeto[0]][1]);
-    distancia = distancia + modulo (x_final - ESQUINAS[trajeto[qtd-1]][0] + y_final - ESQUINAS[trajeto[qtd-1]][1]);
-
-    for (i = 0; i < qtd-1; i++){
-        distancia = distancia + modulo(ESQUINAS[trajeto[i]][0] - ESQUINAS[trajeto[i+1]][0] + ESQUINAS[trajeto[i]][1] - ESQUINAS[trajeto[i+1]][1]);
-    }
-    return distancia;
-}
-void gps (unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final){  		// indica o sentido que o carro deve seguir
-    unsigned char vet[4], proxima, sentido;
-    unsigned short x_prox, y_prox;
-    unsigned int dist_destino;
-    proxima = escolhe_esquina(x, y, x_final, y_final);
-    // para ponto atual
-    x_prox = ESQUINAS[proxima][0];
-    y_prox = ESQUINAS[proxima][1];
-    if (x == x_final){
-        if (y < y_final){
-            sentido = 'S';
-        } else if (y > y_final){
-            sentido = 'N';
-        } else {
-            sentido = 'D';
-        }
-        
-    } else if (y == y_final){
-        if(x < x_final){
-            sentido = 'L';
-        } else if (x > x_final){
-            sentido = 'O';
-        } else {
-            sentido = 'D';
-        }
-        
-    } else if (x > x_prox){
-        sentido = 'O';
-    } else if (x < x_prox){
-        sentido = 'L';
-    } else if (y > y_prox){
-        sentido = 'N';
-    } else if (y < y_prox){
-        sentido = 'S';
-    }
-   // printf("%c", sentido); // substituir por escreve_lcd
-    dist_destino = calcula_distancia(x,y,x_final,y_final);
-    
-    // para prox ponto
-    if (x != x_final && y != y_final){
-        x = x_prox;
-        y = y_prox;
-        proxima = escolhe_esquina(x, y, x_final, y_final);
-        x_prox = ESQUINAS[proxima][0];
-        y_prox = ESQUINAS[proxima][1];
-        if (x == x_final){
-        if (y < y_final){
-            sentido = 'S';
-        } else if (y > y_final){
-            sentido = 'N';
-        } else {
-            sentido = 'D';
-        }
-    } else if (y == y_final){
-        if(x < x_final){
-            sentido = 'L';
-        } else if (x > x_final){
-            sentido = 'O';
-        } else {
-            sentido = 'D';
-        }
-    } else if (x > x_prox){
-        sentido = 'O';
-    } else if (x < x_prox){
-        sentido = 'L';
-    } else if (y > y_prox){
-        sentido = 'N';
-    } else if (y < y_prox){
-        sentido = 'S';
-    }
-   // printf("\nEm %im, siga a %c", modulo(y-y_prox + x-x_prox), sentido); // substituir por escreve_lcd
-    //printf("\nDestino a %im", dist_destino); // substituir por escreve_lcd
-    }
-}
-/* EXEMPLO DOS CODIGOS ACIMA SENDO USADOS
-int main() { 
-    unsigned char i, qtd, vet[4], esquina_carro, esquina_pass1, esquina_pass2, esquina_desti, trajeto[10];
-    unsigned short  x_carro = 1450, y_carro = 1060,
-                    x_passageiro = 420, y_passageiro = 510,
-                    x_desti = 480, y_desti = 1580,
-                    x = 1200, y = 1060;
-    
-    esquina_carro = escolhe_esquina(x_carro, y_carro, x_passageiro, y_passageiro);
-    esquina_pass1 = escolhe_esquina(x_passageiro, y_passageiro, x_carro, y_carro);
-    esquina_pass2 = escolhe_esquina(x_passageiro, y_passageiro, x_desti, y_desti);
-    esquina_desti = escolhe_esquina(x_desti, y_desti, x_passageiro, y_passageiro);
-    //printf("\n\nEsquina Carro = %i\nEsquina Pass1 = %i\nEsquina Pass2 = %i\nEsquina Desti = %i\n\n", esquina_carro, esquina_pass1, esquina_pass2, esquina_desti);
-    
-    qtd = calcula_caminho(x_carro, y_carro, x_passageiro, y_passageiro, trajeto);
-    for (i = 0; i < qtd; i++){
-        printf("%i ", trajeto[i]); // substituir por escreve_lcd
-    }
-
-    qtd = calcula_caminho(x_passageiro, y_passageiro, x_desti, y_desti, trajeto);
-    for (i = 0; i < qtd; i++){
-        printf("%i ", trajeto[i]); // substituir por escreve_lcd
-    }
-    printf("\n\nDist até o passageiro: %im",calcula_distancia(x_carro, y_carro, x_passageiro, y_passageiro)); // substituir por escreve_lcd
-    printf("\nDist até o destino: %im\n\n",calcula_distancia(x_passageiro, y_passageiro, x_desti, y_desti)); // substituir por escreve_lcd
-    printf("Em (%i, %i) seguir a: ", x,y); // substituir por escreve_lcd
-    gps(x,y, x_passageiro, y_passageiro);
-    
-    return 0;
-}
-*/
 
 ISR(USART_RX_vect){ // interrupção de recebimento serial
 	while(!(UCSR0A& (1<<RXC0)));
-	char temp = UDR0;
+	char temp =0;
+	temp = UDR0;
 	serial_global[contador_global] =  temp;
 	contador_global++;
 	interpreta_serial();
@@ -775,7 +1029,8 @@ int main(void){
 	unsigned char verificacao = 0;						// flag de verificacao se é solicitado desligamento ou nao
 	char flagSistema = 0;						// flag pra indicar se o sistema esta ligado ou nao
 	char opcaoB = 2;							// por padrao a opcaoB será 2 = preco; 1 = menor dist até cliente; 3 = menor tempo de corrida
-	char motoristaOcupado = 0;					// flag que apenas o operador 1 pode mudar, se o sistema indica ocupado ou nao em atendimento
+	char motoristaOcupado = 0;					// flag que apenas o operador 1 pode mudar, se o sistema indica ocupado ou nao em atendimento, 
+	char estadoMotorista = 0;					// flag indicando estado do motorisra, 0 = indisponivel, 1 = disnponivel, 2 = ocupado
 	
 	inicia();									//nao liga o display nem configura serial, aguarda comando do usuario
 	while (1) {
@@ -785,7 +1040,7 @@ int main(void){
 		}
 		if (verificacao == '#' && flagSistema == 0){
 			ligaSistema(&flagSistema);
-			perfil = login(&flagSistema, &opcaoB, &motoristaOcupado);
+			perfil = login(&flagSistema, &opcaoB, &motoristaOcupado, &estadoMotorista);
 		}
 	}
 }
