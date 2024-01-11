@@ -1,37 +1,47 @@
+/*=================================================================================================*/
+//	UNIVERSIDADE FEDERAL DO RIO GRANDE DO SUL
+//	ENG04475 - Microprocessadores I (2023/2)
+//	Projeto 1 - UBERGS
+//
+// Alunos:
+// Bruno Gevehr Fernandes (00335299)
+// Caio Fernando Leite França (00330098)
+// Thiago Arndt Schimit (00333710)
+/*=================================================================================================*/
+
+/*======================================  Bibliotecas  ============================================*/
+
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
-#define SENHA1 "1"
-#define SENHA2 "000000"
-//display PORTC
-//teclado PORTD e B
-#define RS 4
-#define EN 5
-#define linha_max 7
-#define botao1 2
-#define botao2 1
-#define botao3 0
-#define FB
-#define QTD_RUASX 4
-#define QTD_RUASY 3
-#define LARGURAX 40 // maior espessura de rua vertical
-#define LARGURAY 48	// maior espessura de rua horizontal
-#define MAX_CLIENTES 5
+/*======================  Definicoes de constantes e variaveis globais  ===========================*/
 
-unsigned char teclado[4][3]={'1','2','3',
-	'4','5','6',
-	'7','8','9',
-'*','0','#'};
+// Senhas
+#define SENHA1 "1"					//Senha do operador 1
+#define SENHA2 "000000"				//Senha do operador 2
 
+// Display (PORTC)
+#define RS 4						// Pino RS do display na PORTC4
+#define EN 5						// Pino EN do display na PORTC5
 
+// Teclado (PORTD e PORTB)
+#define linha_max 7							// Ultimo pino em que as linhas estao conectadas (PORTD7)
+#define botao1 2							// Coluna 1 do teclado 
+#define botao2 1							// Coluna 2 do teclado
+#define botao3 0							// Coluna 3 do teclado
+unsigned char teclado[4][3]={'1','2','3',	// Teclas do teclado
+							'4','5','6',
+							'7','8','9',
+							'*','0','#'};
 
-unsigned char serial_global[20]={'\0'}; 
-unsigned char contador_global=0;
-
-
-unsigned short RUASX [QTD_RUASX] = {378, 814,  1288, 1754}; // centro das ruas horizontais
-unsigned short RUASY [QTD_RUASY] = {484, 1004, 1524};		// centro das ruas verticais
-unsigned short RUAS [12][2] = {
+// Mapa
+#define QTD_RUASX 4											// Quantidade de ruas verticais
+#define QTD_RUASY 3											// Quantidade de ruas horizontais
+#define LARGURAX 40											// Maior espessura de rua vertical
+#define LARGURAY 48											// Maior espessura de rua horizontal
+unsigned short RUASX [QTD_RUASX] = {378, 814,  1288, 1754}; // Centro das ruas horizontais
+unsigned short RUASY [QTD_RUASY] = {484, 1004, 1524};		// Centro das ruas verticais
+unsigned short RUAS [12][2] = {								// Mapa de todas as esquinas no com o centro das ruas como referencia
 	378, 484,
 	814, 484,
 	1288, 484,
@@ -44,9 +54,8 @@ unsigned short RUAS [12][2] = {
 	814, 1524,
 	1288, 1524,
 	1754, 1524
- };
-
-unsigned short ESQUINAS [12][2] = {
+};
+unsigned short ESQUINAS [12][2] = {							// Esquinas do mapa
 	420, 540,
 	860, 540,
 	1330, 540,
@@ -58,33 +67,40 @@ unsigned short ESQUINAS [12][2] = {
 	420, 1580,
 	860, 1580,
 	1330, 1580,
-	1790, 1580 
+	1790, 1580
 };
 
-typedef struct posCarro{
+// Clientes
+#define MAX_CLIENTES 3					// Maximo de clientes em espera
+char flagClienteGlobal;					// Flag global para indicar recebimento de cliente na serial
+char flagClienteDisponivel;				// Flag global para indicar cliente disponivel apos aceitar corrida
+
+// Serial
+unsigned char serial_global[20]={'\0'}; // Buffer para armazenar dados da serial
+unsigned char contador_global=0;		// Contador auxiliar do buffer
+
+/*======================================  Structs  ============================================*/
+
+typedef struct posCarro{			// Struct para posicao do Carro
 	short x;
 	short y;
 }posCarro;
+posCarro posCarroGlobal;			// Struct global para posicao do carro
 
-posCarro posCarroGlobal;
-
-typedef struct cliente{
-	unsigned short cod;
-	unsigned short pos_saida_x;
-	unsigned short pos_saida_y;
-	unsigned short pos_destino_x;
-	unsigned short pos_destino_y;
-	unsigned short distCliente;
-	unsigned short distDestino;
-	unsigned short precoEstimado; 
-	unsigned short tempoEstimado;
+typedef struct cliente{				// Struct para dados dos clientes
+	unsigned short cod;				// Codigo do Cliente
+	unsigned short pos_saida_x;		// Posicao x do Cliente
+	unsigned short pos_saida_y;		// Posicao y do Cliente
+	unsigned short pos_destino_x;	// Posicao x do Destino
+	unsigned short pos_destino_y;	// Posicao y do Destino
+	unsigned short distCliente;		// Distancia do Carro ate o Cliente
+	unsigned short distDestino;		// Distancia do Cliente ate o Destino
+	unsigned short precoEstimado;	// Preco estimado da corrida
+	unsigned short tempoEstimado;	// tempo estimado da corrida
 }cliente;
+cliente bufferCliente;				// Buffer global para armazenamento de clientes lidos da serial
 
-cliente bufferCliente;
-
-char flagClienteGlobal;
-char flagClienteDisponivel;
-
+/*======================================  Timers e Atrasos  =========================================*/
 void atraso_1ms(){
 	TCCR1B = 10;				// CTC prescaler de 8
 	OCR1A = 2000;				// 2000 contagens (1ms)
@@ -122,7 +138,7 @@ void atraso_1s(){
 }
 void atraso_2s(){
 	TCCR1B = 13;				// CTC prescaler de 1024
-	OCR1A = 31250;				// 31250 contagens (1s)
+	OCR1A = 31250;				// 31250 contagens (2s)
 	TCNT1 = 0;
 	while((TIFR1 & (1<<1))==0);	// aguarda estouro
 	TIFR1 = 1<<1;				// reseta flag de estouro
@@ -135,32 +151,31 @@ void atraso_500ms(){
 	TIFR1 = 1<<1;				// reseta flag de estouro
 }
 
+/*====================================  Configuracoes da Serial =======================================*/
+
 void config_serial(){
-	UCSR0B |= (1 << RXCIE0);			// habilita interrupção serial
+	UCSR0B |= (1 << RXCIE0);			// Habilita interrupção serial
 	UBRR0H = 0;
 	UBRR0L = 51;						// 19200bps
-	UCSR0B = (1<<4);					// liga serial
+	UCSR0B = (1<<4);					// Liga serial
 	UCSR0C = 0x06;						// 8bits +1 stopbit -> sem paridade
-	UCSR0B |= (1 << TXEN0);				// transmissao serial
-	UCSR0B |= (1 << RXEN0);				// recepcao serial
+	UCSR0B |= (1 << TXEN0);				// Transmissao serial
+	UCSR0B |= (1 << RXEN0);				// Recepcao serial
 }
-
 void desliga_serial(){
 	UCSR0B &= 0x0;
 }
 void escreve_serial(char dado) {
-	while (!(UCSR0A & (1 << UDRE0)));  // Aguarda o buffer de transmissão ficar vazio
-	UDR0 = dado;                        // Coloca o byte no buffer de transmissão
+	while (!(UCSR0A & (1 << UDRE0)));		// Aguarda o buffer de transmissão ficar vazio
+	UDR0 = dado;							// Coloca o byte no buffer de transmissão
 }
-
-void string_serial (char  *msg){ 	// escreve um string no serial
+void string_serial (char  *msg){ 			// Escreve um string no serial
 	unsigned char i=0;
 	while (msg[i] != 0){
 		escreve_serial(msg[i]);
 		i++;
 	}
 }
-
 void limpa_serial_global(){
 	char i;
 	for(i = 0; i<20; i++){
@@ -168,12 +183,13 @@ void limpa_serial_global(){
 	}
 	contador_global=0;
 }
-
 unsigned char le_serial(){				// funcao de leitura serial -> nao usada
 	while ((UCSR0A & (1<<RXC0)) == 0);	// enquanto nao recebe leitura, aguarda
 	UCSR0A |= (1<<RXC0);				// limpa flag
 	return UDR0;						// retorna leitura
 }
+
+/*====================================  Configuracoes do LCD 16x2 =======================================*/
 
 void comando_lcd (unsigned char comando){ // comando em 4bits
 	PORTC &= ~(1<<RS);			// RS = 0
@@ -187,7 +203,6 @@ void comando_lcd (unsigned char comando){ // comando em 4bits
 	PORTC &= ~(1<<EN);
 	atraso_40us();
 }
-
 void letra_lcd (unsigned char comando){ // letra em 4bits
 	PORTC |= (1<<RS);					// RS = 1
 	PORTC |= (1<<EN);					// EN = 1
@@ -200,7 +215,6 @@ void letra_lcd (unsigned char comando){ // letra em 4bits
 	PORTC &= ~(1<<EN);
 	atraso_40us();
 }
-
 void escreve_lcd (char  *msg){ // escreve um string no lcd
 	unsigned char i=0;
 	while (msg[i] != 0){
@@ -209,12 +223,10 @@ void escreve_lcd (char  *msg){ // escreve um string no lcd
 		atraso_40us();
 	}
 }
-
 void limpa_lcd(){
 	comando_lcd(0x01);
 	atraso_1ms64();
 }
-
 void inicia_lcd_4bits(){ // inicializa em 4bits o lcd
 	atraso_15ms();
 	comando_lcd (0x28);
@@ -223,7 +235,6 @@ void inicia_lcd_4bits(){ // inicializa em 4bits o lcd
 	comando_lcd (0x01);
 	atraso_1ms64();
 }
-
 void desliga_lcd_4bits() {
 	atraso_15ms();
 	comando_lcd (0x08);
