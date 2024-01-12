@@ -177,6 +177,15 @@ void atraso_500ms(){
 	
 }
 
+void atraso_250ms(){
+	TCCR1B = 13;				// CTC prescaler de 1024
+	OCR1A = 3907;				// 3907 contagens (250ms)
+	TCNT1 = 0;
+	while((TIFR1 & (1<<1))==0);	// aguarda estouro
+	TIFR1 = 1<<1;				// reseta flag de estouro
+	
+}
+
 void startContadorTempo() {		//125x contadorTempo = 1s
 	TIFR0 = 1<<1;
 	TCCR0B = 0x05;				// Configura o Timer0 no modo CTC e prescaler de 1024
@@ -317,7 +326,7 @@ void ligaSistema(char *flagSistema) {
 //Funcao que converte um dado valor para um caractere numérico em ASCII
 void converteASCII (unsigned short valor, char *stringConvertida){
 	char i = 0, b = 0;
-	if (valor > 65534){				
+	if (valor > 65534){
 		stringConvertida[0] = '*';
 		stringConvertida[1] = '\0';
 		return;
@@ -387,7 +396,7 @@ double distancia(double x1, double y1, double x2, double y2) {
 	return aproximacao;
 }
 
-unsigned int modulo (int x){					
+unsigned int modulo (int x){
 	if (x < 0) {
 		return -x;
 		} else {
@@ -396,7 +405,7 @@ unsigned int modulo (int x){
 }
 
 // Funcao que descobre as esquinas adjacentes a um ponto
-char esquinas_adjacentes (unsigned short x, unsigned short y, unsigned char vet[]){ 
+char esquinas_adjacentes (unsigned short x, unsigned short y, unsigned char vet[]){
 	unsigned char i, qtd = 0, flag = 0;
 	unsigned short aux = x;
 	
@@ -466,7 +475,7 @@ unsigned char escolhe_esquina(unsigned short x, unsigned short y, unsigned short
 }
 
 // Funcao que calcula as esquinas de um trajeto
-unsigned char calcula_caminho (unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final, unsigned char trajeto[]){ 
+unsigned char calcula_caminho (unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final, unsigned char trajeto[]){
 	unsigned char atual, destino, qtd = 0, flag =0, i = 0;
 	destino = escolhe_esquina(x_final,y_final,x,y);
 	while (!flag){
@@ -483,13 +492,13 @@ unsigned char calcula_caminho (unsigned short x, unsigned short y, unsigned shor
 }
 
 // calcula a distancia de um trajeto (caminho efetivo a ser realizadopelo motorista)
-unsigned short calcula_distancia(unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final){	
+unsigned short calcula_distancia(unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final){
 	unsigned short distancia = modulo(x-x_final)+ modulo(y-y_final);
 	return distancia;
 }
 
 // Funcao que indica o sentido que o carro deve seguir
-void gps (unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final, char flagComCliente, char indiceInfo, unsigned short precoCorrida){  		
+void gps (unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final, char flagComCliente, char indiceInfo, unsigned short precoCorrida){
 	unsigned char proxima = 0, sentido = 0;
 	unsigned short x_prox, y_prox;
 	unsigned int dist_destino;
@@ -607,7 +616,7 @@ void gps (unsigned short x, unsigned short y, unsigned short x_final, unsigned s
 }
 
 // Funcao que estima o preço em centavos
-unsigned short estimagemPreco (unsigned short dist) {		
+unsigned short estimagemPreco (unsigned short dist) {
 	unsigned short preco = 200;
 	preco = preco + (12*dist)/100;  // preço do km percorrido
 	preco = preco + (dist/139)*5;   // preço do tempo (138,88 m/10s)
@@ -626,7 +635,7 @@ unsigned char debounce(unsigned char num_bit){
 	unsigned char ultimo=0;
 
 	while(cont<7){
-		atraso_2ms();
+		atraso_1ms();
 		if(ultimo==(PINB&(1<<num_bit))){
 			cont++;
 		}
@@ -641,16 +650,16 @@ unsigned char debounce(unsigned char num_bit){
 
 // Funcao que verifica se é pressionada a tecla '*' por tempo suficiente
 unsigned char verificacao_tecla1(char tempo){ //tempo multiplicado por 2 em seg por conta de usar atraso de 0,5seg
-	unsigned char cont=0;					
+	unsigned char cont=0;
 	unsigned char ultimo=0;
-	while(cont<tempo){
+	while(cont<tempo*4){
 		if(ultimo==(1<<botao1)){
 			atraso_1ms();
 			cont++;
 		}
 		else{
 			if(ultimo==(PINB&(1<<botao1))){
-				atraso_500ms();
+				atraso_250ms();
 				cont++;
 			}
 			else{
@@ -663,17 +672,17 @@ unsigned char verificacao_tecla1(char tempo){ //tempo multiplicado por 2 em seg 
 }
 
 // Funcao que verifica se é pressionada a tecla '#' por tempo suficiente
-unsigned char verificacao_tecla2(char tempo){ //tempo multiplicado por 2 em seg
-	unsigned char cont=0;			
+unsigned char verificacao_tecla2(char tempo){  // tempo em segundos (aproximado
+	unsigned char cont=0;
 	unsigned char ultimo=0;
-	while(cont<tempo){
+	while(cont<tempo*4){
 		if(ultimo == (1<<botao3)){
-			atraso_1ms64();
+			atraso_1ms();
 			cont++;
 		}
 		else{
 			if(ultimo == (PINB&(1<<botao3))){
-				atraso_500ms();
+				atraso_250ms();
 				cont++;
 			}
 			else{
@@ -686,7 +695,7 @@ unsigned char verificacao_tecla2(char tempo){ //tempo multiplicado por 2 em seg
 }
 
 //Funcao que verifia se é solicitado o logout, o desligue do sistema, ou a ligacao do sistema
-unsigned char verifica_login(){			
+unsigned char verifica_login(){
 	
 	PORTD&=~(1<<(3));
 	if(!verificacao_tecla1(6)){
@@ -706,7 +715,7 @@ unsigned char scan(unsigned char linha){
 	PORTD&=~(1<<(linha_max-linha));
 	if(!debounce(botao1)){
 		if(linha == 4){
-			if(!verificacao_tecla1(6)){		//verifica se vem comando de desligar o sistema
+			if(!verificacao_tecla1(3)){		//verifica se vem comando de desligar o sistema
 				return 'd';
 			}
 		}
@@ -720,6 +729,11 @@ unsigned char scan(unsigned char linha){
 		return teclado[linha-1][1];
 	}
 	if(!debounce(botao3)){
+		if(linha == 4){
+			if(!verificacao_tecla2(2)){		//verifica se vem comando de logoff o sistema
+				return 'x';
+			}
+		}
 		while(!(PINB&(1<<botao3)));
 		PORTD|=(1<<(linha_max-linha));
 		return teclado[linha-1][2];
@@ -1050,9 +1064,9 @@ void menu(char *indiceCliente, char *indiceInfo, char quantidadeClientes, client
 			if (*indiceInfo)
 			return;
 			if (flagComCliente){
-			*indiceInfo = 1;
-			printDirecao(flagEmCorrida, flagComCliente, clienteAtual, *indiceInfo, precoCorrida);
-			return;
+				*indiceInfo = 1;
+				printDirecao(flagEmCorrida, flagComCliente, clienteAtual, *indiceInfo, precoCorrida);
+				return;
 			}
 			return;
 		}
@@ -1237,9 +1251,11 @@ char ubergs(char *flagSistema, char *opcaoB, char *motoristaOcupado, char *estad
 	while (1){
 		for (i = 1; i<=2; i++){
 			letra = scan (i);
+			
 			movimento_manual(letra);
 			mudaOpcaoB(opcaoB, clientesEspera, quantidadeClientes, flagPerfil, letra);
 			mudaMotoristaOcupado(motoristaOcupado, letra, flagPerfil, flagEmCorrida);
+			
 		}
 		for (i=3; i<=4; i++){
 			letra = scan(i);
@@ -1247,25 +1263,24 @@ char ubergs(char *flagSistema, char *opcaoB, char *motoristaOcupado, char *estad
 			menu(&indiceCliente, &indiceInfo, *quantidadeClientes, clientesEspera, flagComCliente, estadoMotorista, clienteAtual, flagEmCorrida, letra, precoCorrida);
 			acaoPassageiro(estadoMotorista, clienteAtual, &flagComCliente, &flagEmCorrida, &precoCorrida, letra, &indiceInfo);
 			aceitaCorrida(&indiceCliente, &clienteAtual, clientesEspera, estadoMotorista, motoristaOcupado, &flagEmCorrida, quantidadeClientes, &letra, *opcaoB);
-		}
-		
-		if(indiceCliente == 0 && flagEmCorrida == 0){
-			verificacao = verifica_login();
-			if (verificacao == '*'){
-				string_serial("UE");
-				escreve_serial(0);
-				*estadoMotorista = 0;
-				desligaSistema(flagSistema);
-				return 'd';
-			}
-			if (verificacao == '#'){
-				limpa_lcd();
-				escreve_lcd("Logoff realizado");
-				string_serial("UE");
-				escreve_serial(0);
-				*estadoMotorista = 0;
-				atraso_2s();
-				return 1;
+			
+			if(indiceCliente == 0 && flagEmCorrida == 0){
+					if (letra == 'x'){
+						limpa_lcd();
+						escreve_lcd("Logoff realizado");
+						string_serial("UE");
+						escreve_serial(0);
+						*estadoMotorista = 0;
+						atraso_2s();
+						return 1;
+					}
+					if (letra == 'd'){
+						string_serial("UE");
+						escreve_serial(0);
+						*estadoMotorista = 0;
+						desligaSistema(flagSistema);
+						return letra;
+					}
 			}
 		}
 		if (*estadoMotorista == 1) {
@@ -1277,6 +1292,7 @@ char ubergs(char *flagSistema, char *opcaoB, char *motoristaOcupado, char *estad
 		precoCorrida = calcula_precoCorrida(clienteAtual.distDestino);
 	}
 }
+
 
 void lcdEscreverSenha(){
 	limpa_lcd();
