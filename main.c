@@ -17,22 +17,25 @@
 /*======================  Definicoes de constantes e variaveis globais  ===========================*/
 
 // Senhas
-#define SENHA1 "1"					//Senha do operador 1
-#define SENHA2 "2"					//Senha do operador 2
+#define SENHA1 "1253"					//Senha do operador 1
+#define SENHA2 "8759"					//Senha do operador 2
 
 // Display (PORTC)
 #define RS 4						// Pino RS do display na PORTC4
 #define EN 5						// Pino EN do display na PORTC5
 
 // Teclado (PORTD e PORTB)
-#define linha_max 7							// Ultimo pino em que as linhas estao conectadas (PORTD7)
-#define botao1 2							// Coluna 1 do teclado
-#define botao2 1							// Coluna 2 do teclado
-#define botao3 0							// Coluna 3 do teclado
-unsigned char teclado[4][3]={'1','2','3',	// Teclas do teclado
+#define linha_max 7					// Ultimo pino em que as linhas estao conectadas (PORTD7)
+#define botao1 2					// Coluna 1 do teclado
+#define botao2 1					// Coluna 2 do teclado
+#define botao3 0					// Coluna 3 do teclado
+
+// Teclas do teclado
+unsigned char teclado[4][3]={'1','2','3',
 	'4','5','6',
 	'7','8','9',
-'*','0','#'};
+	'*','0','#'
+};
 
 // Mapa
 #define QTD_RUASX 4											// Quantidade de ruas verticais
@@ -55,7 +58,9 @@ unsigned short RUAS [12][2] = {								// Mapa de todas as esquinas no com o cen
 	1288, 1524,
 	1754, 1524
 };
-unsigned short ESQUINAS [12][2] = {							// Esquinas do mapa
+
+// Esquinas do mapa
+unsigned short ESQUINAS [12][2] = {
 	420, 540,
 	860, 540,
 	1330, 540,
@@ -70,14 +75,8 @@ unsigned short ESQUINAS [12][2] = {							// Esquinas do mapa
 	1790, 1580
 };
 
-// Clientes
-#define MAX_CLIENTES 3					// Maximo de clientes em espera
-char flagClienteGlobal;					// Flag global para indicar recebimento de cliente na serial
-char flagClienteDisponivel;				// Flag global para indicar cliente disponivel apos aceitar corrida
 
-// Serial
-unsigned char serial_global[20]={'\0'}; // Buffer para armazenar dados da serial
-unsigned char contador_global=0;		// Contador auxiliar do buffer
+#define MAX_CLIENTES 3					// Maximo de clientes em espera
 
 
 /*======================================  Structs  ============================================*/
@@ -86,7 +85,6 @@ typedef struct posCarro{			// Struct para posicao do Carro
 	short x;
 	short y;
 }posCarro;
-posCarro posCarroGlobal;			// Struct global para posicao do carro
 
 typedef struct cliente{				// Struct para dados dos clientes
 	unsigned short cod;				// Codigo do Cliente
@@ -99,7 +97,19 @@ typedef struct cliente{				// Struct para dados dos clientes
 	unsigned short precoEstimado;	// Preco estimado da corrida
 	unsigned short tempoEstimado;	// tempo estimado da corrida
 }cliente;
-cliente bufferCliente;				// Buffer global para armazenamento de clientes lidos da serial
+
+/*====================================  Variáveis Globais =======================================*/
+
+char flagClienteGlobal;					// Flag global para indicar recebimento de cliente na serial
+char flagClienteDisponivel;				// Flag global para indicar cliente disponivel apos aceitar corrida
+unsigned short auxTempoCorridaGlobal;	// Contador auxiliar usado para calcular o tempo da corrida
+unsigned short janela10secGlobal;		// Contador auxiliar usado para calcular o tempo da corrida
+cliente bufferCliente;					// Buffer global para armazenamento de clientes lidos da serial
+posCarro posCarroGlobal;				// Struct global para posicao do carro
+unsigned char serial_global[20]={'\0'}; // Buffer para armazenar dados da serial
+unsigned char contador_global=0;		// Contador auxiliar do buffer
+
+
 
 /*======================================  Timers e Atrasos  =========================================*/
 void atraso_1ms(){
@@ -109,6 +119,7 @@ void atraso_1ms(){
 	while((TIFR1 & (1<<1))==0);	// aguarda estouro
 	TIFR1 = 1<<1;				// reseta flag de estouro
 }
+
 void atraso_1ms64(){
 	TCCR1B = 10;				// CTC prescaler de 8
 	OCR1A = 3280;				// 3280 contagens (1.64ms)
@@ -116,6 +127,7 @@ void atraso_1ms64(){
 	while((TIFR1 & (1<<1))==0);	// aguarda estouro
 	TIFR1 = 1<<1;				// reseta flag de estouro
 }
+
 void atraso_2ms(){
 	TCCR1B = 10;				// CTC prescaler de 8
 	OCR1A = 4000;				// 4000 contagens (2ms)
@@ -123,6 +135,7 @@ void atraso_2ms(){
 	while((TIFR1 & (1<<1))==0);	// aguarda estouro
 	TIFR1 = 1<<1;				// reseta flag de estouro
 }
+
 void atraso_15ms(){
 	TCCR1B = 10;				// CTC prescaler de 8
 	OCR1A = 30000;				// 30000 contagens (15ms)
@@ -130,6 +143,7 @@ void atraso_15ms(){
 	while((TIFR1 & (1<<1))==0);	// aguarda estouro
 	TIFR1 = 1<<1;				// reseta flag de estouro
 }
+
 void atraso_40us(){
 	TCCR1B = 9;					// CTC prescaler de 1
 	OCR1A = 640;				// 640 contagens (40us)
@@ -137,6 +151,7 @@ void atraso_40us(){
 	while((TIFR1 & (1<<1))==0);	// aguarda estouro
 	TIFR1 = 1<<1;				// reseta flag
 }
+
 void atraso_1s(){
 	TCCR1B = 13;				// CTC prescaler de 1024
 	OCR1A = 15625;				// 15625 contagens (1s)
@@ -144,6 +159,7 @@ void atraso_1s(){
 	while((TIFR1 & (1<<1))==0);	// aguarda estouro
 	TIFR1 = 1<<1;				// reseta flag de estouro
 }
+
 void atraso_2s(){
 	TCCR1B = 13;				// CTC prescaler de 1024    0000 1101
 	OCR1A = 31250;				// 31250 contagens (2s)
@@ -151,6 +167,7 @@ void atraso_2s(){
 	while((TIFR1 & (1<<1))==0);	// aguarda estouro
 	TIFR1 = 1<<1;				// reseta flag de estouro
 }
+
 void atraso_500ms(){
 	TCCR1B = 13;				// CTC prescaler de 1024
 	OCR1A = 7813;				// 7813 contagens (500ms)
@@ -159,21 +176,22 @@ void atraso_500ms(){
 	TIFR1 = 1<<1;				// reseta flag de estouro
 	
 }
+
 void startContadorTempo() {		//125x contadorTempo = 1s
 	TIFR0 = 1<<1;
 	TCCR0B = 0x05;				// Configura o Timer0 no modo CTC e prescaler de 1024
-	OCR0A = 125;
+	OCR0A = 124;
 	TCNT0 = 0;
 }
+
 void stopContadorTempo() {
 	TCCR0B = 0;
 }
-unsigned short auxTempoCorridaGlobal;
-unsigned short janela10secGlobal;
 
 
-/*====================================  Configuracoes da Serial =======================================*/
+/*====================================  Funcoes da Serial =======================================*/
 
+// Configuracao da serial
 void config_serial(){
 	UCSR0B |= (1 << RXCIE0);			// Habilita interrupção serial
 	UBRR0H = 0;
@@ -183,13 +201,16 @@ void config_serial(){
 	UCSR0B |= (1 << TXEN0);				// Transmissao serial
 	UCSR0B |= (1 << RXEN0);				// Recepcao serial
 }
+
 void desliga_serial(){
 	UCSR0B &= 0x0;
 }
+
 void escreve_serial(char dado) {
 	while (!(UCSR0A & (1 << UDRE0)));		// Aguarda o buffer de transmissão ficar vazio
 	UDR0 = dado;							// Coloca o byte no buffer de transmissão
 }
+
 void string_serial (char  *msg){ 			// Escreve um string no serial
 	unsigned char i=0;
 	while (msg[i] != 0){
@@ -197,6 +218,7 @@ void string_serial (char  *msg){ 			// Escreve um string no serial
 		i++;
 	}
 }
+
 void limpa_serial_global(){
 	char i;
 	for(i = 0; i<20; i++){
@@ -204,6 +226,7 @@ void limpa_serial_global(){
 	}
 	contador_global=0;
 }
+
 unsigned char le_serial(){				// funcao de leitura serial -> nao usada
 	while ((UCSR0A & (1<<RXC0)) == 0);	// enquanto nao recebe leitura, aguarda
 	UCSR0A |= (1<<RXC0);				// limpa flag
@@ -262,6 +285,10 @@ void desliga_lcd_4bits() {
 	atraso_1ms64();
 }
 
+
+/*====================================  Funcoes auxiliares =======================================*/
+
+// Funcao para desligar o sistema quando solicitado
 void desligaSistema (char *desligaSistema) {
 	if (*desligaSistema == 1){
 		desliga_lcd_4bits();
@@ -272,6 +299,7 @@ void desligaSistema (char *desligaSistema) {
 	}
 }
 
+// Funcao para ligar o sistema quando solicitado
 void ligaSistema(char *flagSistema) {
 	if (*flagSistema == 0){
 		inicia_lcd_4bits();
@@ -285,9 +313,11 @@ void ligaSistema(char *flagSistema) {
 		escreve_serial(0);
 	}
 }
+
+//Funcao que converte um dado valor para um caractere numérico em ASCII
 void converteASCII (unsigned short valor, char *stringConvertida){
 	char i = 0, b = 0;
-	if (valor > 65534){
+	if (valor > 65534){				
 		stringConvertida[0] = '*';
 		stringConvertida[1] = '\0';
 		return;
@@ -297,9 +327,10 @@ void converteASCII (unsigned short valor, char *stringConvertida){
 		stringConvertida[1] = '\0';
 		return;
 	}
+	
 	unsigned short divisor = 10;
 	unsigned short auxiliar = 0;
-	
+	// associa cada caractere a seu respectivo valor em ASCII
 	for (i = 0; i < 5; i++){
 		auxiliar = valor%(divisor);
 		valor -= auxiliar;
@@ -316,7 +347,7 @@ void converteASCII (unsigned short valor, char *stringConvertida){
 	
 	char inicio = 0;
 	char fim = i;
-
+	// Reordena a string
 	while (inicio < fim){
 		char letraAux = stringConvertida[inicio];
 		stringConvertida[inicio] = stringConvertida[fim];
@@ -324,7 +355,6 @@ void converteASCII (unsigned short valor, char *stringConvertida){
 		inicio++;
 		fim--;
 	}
-	
 	if (stringConvertida[0]=='\0')
 	stringConvertida[0] = '0';
 	
@@ -338,6 +368,7 @@ void imprimeASCII (unsigned short valor){
 	escreve_lcd(string);
 }
 
+// Funcao que calcular a menor distancia (raiz dos quadrados) entre dois pontos
 double distancia(double x1, double y1, double x2, double y2) {
 	double diffX = x2 - x1;
 	double diffY = y2 - y1;
@@ -356,7 +387,7 @@ double distancia(double x1, double y1, double x2, double y2) {
 	return aproximacao;
 }
 
-unsigned int modulo (int x){					// modulo de um numero
+unsigned int modulo (int x){					
 	if (x < 0) {
 		return -x;
 		} else {
@@ -364,11 +395,12 @@ unsigned int modulo (int x){					// modulo de um numero
 	}
 }
 
-char esquinas_adjacentes (unsigned short x, unsigned short y, unsigned char vet[]){ // descobre as esquinas adjacentes a um ponto
+// Funcao que descobre as esquinas adjacentes a um ponto
+char esquinas_adjacentes (unsigned short x, unsigned short y, unsigned char vet[]){ 
 	unsigned char i, qtd = 0, flag = 0;
 	unsigned short aux = x;
 	
-	while(x >= 1 && x <= 2500 && flag == 0){
+	while(x >= 0 && x <= 2500 && flag == 0){
 		x++;
 		for (i = 0; i < 12; i++){
 			if (x == RUAS[i][0] && y == RUAS[i][1]){
@@ -380,7 +412,7 @@ char esquinas_adjacentes (unsigned short x, unsigned short y, unsigned char vet[
 	}
 	flag = 0;
 	x = aux;
-	while(x >= 1 && x <= 2500 && flag == 0){
+	while(x >= 0 && x <= 2500 && flag == 0){
 		x--;
 		for (i = 0; i < 12; i++){
 			if (x == RUAS[i][0] && y == RUAS[i][1]){
@@ -393,7 +425,7 @@ char esquinas_adjacentes (unsigned short x, unsigned short y, unsigned char vet[
 	flag = 0;
 	x = aux;
 	aux = y;
-	while(y >= 1 && y <= 2500 && flag == 0){
+	while(y >= 0 && y <= 2500 && flag == 0){
 		y++;
 		for (i = 0; i < 12; i++){
 			if (x == RUAS[i][0] && y == RUAS[i][1]){
@@ -405,7 +437,7 @@ char esquinas_adjacentes (unsigned short x, unsigned short y, unsigned char vet[
 	}
 	flag = 0;
 	y = aux;
-	while(y >= 1 && y <= 2500 && flag == 0){
+	while(y >= 0 && y <= 2500 && flag == 0){
 		y--;
 		for (i = 0; i < 12; i++){
 			if (x == RUAS[i][0] && y == RUAS[i][1]){
@@ -418,8 +450,9 @@ char esquinas_adjacentes (unsigned short x, unsigned short y, unsigned char vet[
 	return qtd;
 }
 
-unsigned char escolhe_esquina(unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final){ // escolhe a esquina adjacente mais proxima do destino
-	unsigned char i, esquina, qtd =0;;
+// Funcao que escolhe a esquina adjacente mais proxima do destino
+unsigned char escolhe_esquina(unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final){
+	unsigned char i, esquina = 0, qtd =0;;
 	double menor_dist = 10000;
 	unsigned char vet[4];
 	qtd = esquinas_adjacentes(x,y,vet);
@@ -432,7 +465,8 @@ unsigned char escolhe_esquina(unsigned short x, unsigned short y, unsigned short
 	return esquina;
 }
 
-unsigned char calcula_caminho (unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final, unsigned char trajeto[]){ // calcula as esquinas de um trajeto
+// Funcao que calcula as esquinas de um trajeto
+unsigned char calcula_caminho (unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final, unsigned char trajeto[]){ 
 	unsigned char atual, destino, qtd = 0, flag =0, i = 0;
 	destino = escolhe_esquina(x_final,y_final,x,y);
 	while (!flag){
@@ -448,13 +482,15 @@ unsigned char calcula_caminho (unsigned short x, unsigned short y, unsigned shor
 	return i;
 }
 
-unsigned short calcula_distancia(unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final){	// calcula a distancia de um trajeto
+// calcula a distancia de um trajeto (caminho efetivo a ser realizadopelo motorista)
+unsigned short calcula_distancia(unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final){	
 	unsigned short distancia = modulo(x-x_final)+ modulo(y-y_final);
 	return distancia;
 }
 
-void gps (unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final, char flagComCliente, char indiceInfo, unsigned short precoCorrida){  		// indica o sentido que o carro deve seguir
-	unsigned char vet[4], proxima, sentido;
+// Funcao que indica o sentido que o carro deve seguir
+void gps (unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final, char flagComCliente, char indiceInfo, unsigned short precoCorrida){  		
+	unsigned char proxima = 0, sentido = 0;
 	unsigned short x_prox, y_prox;
 	unsigned int dist_destino;
 	proxima = escolhe_esquina(x, y, x_final, y_final);
@@ -570,7 +606,8 @@ void gps (unsigned short x, unsigned short y, unsigned short x_final, unsigned s
 	}
 }
 
-unsigned short estimagemPreco (unsigned short dist) {		// preço em centavos
+// Funcao que estima o preço em centavos
+unsigned short estimagemPreco (unsigned short dist) {		
 	unsigned short preco = 200;
 	preco = preco + (12*dist)/100;  // preço do km percorrido
 	preco = preco + (dist/139)*5;   // preço do tempo (138,88 m/10s)
@@ -578,6 +615,7 @@ unsigned short estimagemPreco (unsigned short dist) {		// preço em centavos
 	return preco;
 }
 
+// Funcao que estima o tempo em segundos
 unsigned short estimagemTempo (unsigned short dist) {
 	unsigned short tempo = dist/14;
 	return tempo; 		//50km/h = 13,88 m/s ; arredondei para 14 m/s para fins de aproximaçao
@@ -601,8 +639,9 @@ unsigned char debounce(unsigned char num_bit){
 	return ultimo;
 }
 
+// Funcao que verifica se é pressionada a tecla '*' por tempo suficiente
 unsigned char verificacao_tecla1(char tempo){ //tempo multiplicado por 2 em seg por conta de usar atraso de 0,5seg
-	unsigned char cont=0;					// verifica se é pressionado e segurado por um certo tempo a tecla '*'
+	unsigned char cont=0;					
 	unsigned char ultimo=0;
 	while(cont<tempo){
 		if(ultimo==(1<<botao1)){
@@ -623,8 +662,9 @@ unsigned char verificacao_tecla1(char tempo){ //tempo multiplicado por 2 em seg 
 	return ultimo;
 }
 
+// Funcao que verifica se é pressionada a tecla '#' por tempo suficiente
 unsigned char verificacao_tecla2(char tempo){ //tempo multiplicado por 2 em seg
-	unsigned char cont=0;					// verifica se é pressionado e segurado por um certo tempo a tecla '#'
+	unsigned char cont=0;			
 	unsigned char ultimo=0;
 	while(cont<tempo){
 		if(ultimo == (1<<botao3)){
@@ -645,14 +685,15 @@ unsigned char verificacao_tecla2(char tempo){ //tempo multiplicado por 2 em seg
 	return ultimo;
 }
 
-unsigned char verifica_login(){			//scan apenas da linha 4, com um "debounce" maior para verificar se apertou a tecla tempo suficiente
+//Funcao que verifia se é solicitado o logout, o desligue do sistema, ou a ligacao do sistema
+unsigned char verifica_login(){			
 	
 	PORTD&=~(1<<(3));
 	if(!verificacao_tecla1(6)){
 		PORTD|=(1<<(3));
 		return teclado[3][0];
 	}
-	if(!verificacao_tecla2(4)){ // lembrar de mudar :D
+	if(!verificacao_tecla2(4)){
 		PORTD|=(1<<(3));
 		return teclado[3][2];
 	}
@@ -660,7 +701,8 @@ unsigned char verifica_login(){			//scan apenas da linha 4, com um "debounce" ma
 	return '\0';
 }
 
-unsigned char scan(unsigned char linha){//linhas 0, 1, 2 e 3
+// Funcao qu escaneia as linhas 1, 2, 3 e 4
+unsigned char scan(unsigned char linha){
 	PORTD&=~(1<<(linha_max-linha));
 	if(!debounce(botao1)){
 		if(linha == 4){
@@ -668,17 +710,17 @@ unsigned char scan(unsigned char linha){//linhas 0, 1, 2 e 3
 				return 'd';
 			}
 		}
-		//while(!(PINB&(1<<botao1)));
+		while(!(PINB&(1<<botao1)));
 		PORTD|=(1<<(linha_max-linha));
 		return teclado[linha-1][0];
 	}
 	if(!debounce(botao2)){
-		//while(!(PINB&(1<<botao2)));
+		while(!(PINB&(1<<botao2)));
 		PORTD|=(1<<(linha_max-linha));
 		return teclado[linha-1][1];
 	}
 	if(!debounce(botao3)){
-		//while(!(PINB&(1<<botao3)));
+		while(!(PINB&(1<<botao3)));
 		PORTD|=(1<<(linha_max-linha));
 		return teclado[linha-1][2];
 	}
@@ -686,6 +728,7 @@ unsigned char scan(unsigned char linha){//linhas 0, 1, 2 e 3
 	return '\0';
 }
 
+// Funcao que configura as portas e interrupçoes iniciais
 void inicia(){
 	DDRD = 0x79;			//0111 1000 -> inicia porta D
 	DDRB = 0x00;
@@ -702,6 +745,7 @@ void inicia(){
 	escreve_serial(0);
 }
 
+// Funcao que compara duas strings
 char compara_string(char* a, char* b){ // 0 se igual, 1 se diferente
 	char flag = 0;
 	while (*a != '\0' || *b != '\0') {
@@ -719,8 +763,7 @@ char compara_string(char* a, char* b){ // 0 se igual, 1 se diferente
 	}
 }
 
-
-
+// Funcao que le a senha do usuario
 char ler_senha(){
 	char perfil = 0; //perfil 0 (senha invalida), perfil 1 (ADM), perfil 2 (OUTRO)
 	char senha[10]={'\0'}, i=0, j=0, letra = '\0';
@@ -771,6 +814,7 @@ char ler_senha(){
 	return perfil;
 }
 
+// Funcao para controlar o carro
 void movimento_manual (char letra){
 	if (letra == '5'){
 		string_serial("UM");
@@ -789,6 +833,7 @@ void movimento_manual (char letra){
 	
 }
 
+// Funcao que copia as informacoes de um cliente
 void copiaCliente(cliente *clienteDestino, cliente *clienteOrigem){
 	clienteDestino->cod = clienteOrigem->cod;
 	clienteDestino->distCliente = clienteOrigem->distCliente;
@@ -800,6 +845,8 @@ void copiaCliente(cliente *clienteDestino, cliente *clienteOrigem){
 	clienteDestino->precoEstimado = clienteOrigem->precoEstimado;
 	clienteDestino->tempoEstimado = clienteOrigem->tempoEstimado;
 }
+
+// Funcao que ordena uma lista de clientes
 void ordenaClientes (cliente *clientesEspera, char opcaoB, char *quantidadeClientes){
 	char i, j;
 	cliente Aux;
@@ -844,6 +891,7 @@ void ordenaClientes (cliente *clientesEspera, char opcaoB, char *quantidadeClien
 	}
 }
 
+// Funcao que armazena o cliente do buffer em uma lista
 void armazenaCliente(cliente *clientesEspera, char opcaoB, char *quantidadeClientes){
 	if (!flagClienteGlobal)
 	return;
@@ -868,12 +916,11 @@ void armazenaCliente(cliente *clientesEspera, char opcaoB, char *quantidadeClien
 	
 	ordenaClientes(clientesEspera, opcaoB, quantidadeClientes);
 	
-	
-	
 	flagClienteGlobal = 0;
 	return;
 }
 
+// Funcao que zera as informaçoes de um cliente
 void apagaCliente(cliente *clienteApagado){
 	clienteApagado->cod = 0;
 	clienteApagado->pos_destino_x = 0;
@@ -886,6 +933,7 @@ void apagaCliente(cliente *clienteApagado){
 	clienteApagado->distDestino = 0;
 }
 
+// Funcao que remove um cliente da lista
 void removeCliente(cliente *clienteEspera, char *quantidadeClientes, char *indiceCliente) {
 	if (*quantidadeClientes == 0)
 	return;
@@ -903,6 +951,7 @@ void removeCliente(cliente *clienteEspera, char *quantidadeClientes, char *indic
 	return;
 }
 
+// Funcao que imprime a informacao desejada de um cliente no display
 void printCliente (char indiceCliente, char indiceInfo, cliente *Cliente){
 	
 	limpa_lcd();
@@ -935,6 +984,7 @@ void printCliente (char indiceCliente, char indiceInfo, cliente *Cliente){
 	}
 }
 
+// Funcao que imprime a direcao ou o preco atual da corrida no display
 void printDirecao(char flagEmCorrida, char flagComCliente, cliente clienteAtual, char indiceInfo, unsigned short precoCorrida) {
 	if (!flagEmCorrida){
 		limpa_lcd();
@@ -954,6 +1004,7 @@ void printDirecao(char flagEmCorrida, char flagComCliente, cliente clienteAtual,
 	return;
 }
 
+// Menu interativo para o usuario
 void menu(char *indiceCliente, char *indiceInfo, char quantidadeClientes, cliente *clientesEspera, char flagComCliente, char estadoMotorista, cliente clienteAtual, char flagEmCorrida, char letra, unsigned short precoCorrida){
 	if (letra == '8'){
 		if (!(*indiceCliente))			// nao faz nada
@@ -1019,6 +1070,7 @@ void menu(char *indiceCliente, char *indiceInfo, char quantidadeClientes, client
 	}
 }
 
+// Funcao que verifica se o usuario aceito a corrida
 void aceitaCorrida (char *indiceCliente, cliente *clienteAtual, cliente *clientesEspera, char *estadoMotorista, char *motoristaOcupado, char *flagEmCorrida, char *quantidadeClientes, char *letra, char opcaoB){
 
 	if (*flagEmCorrida)	// se o motorista ja esta em atendimento
@@ -1031,7 +1083,7 @@ void aceitaCorrida (char *indiceCliente, cliente *clienteAtual, cliente *cliente
 	if (*letra == '#'){										// se ele nao esta em atendimento, e aceitou o cliente
 		string_serial("UA");
 		escreve_serial(clientesEspera[*indiceCliente-1].cod);
-		atraso_500ms();										// aguarda resposta do servidor
+		while(!flagClienteDisponivel);										// aguarda resposta do servidor
 		if (flagClienteDisponivel == 2){					//se servidor responde que cliente aceitou
 			copiaCliente(clienteAtual, &clientesEspera[*indiceCliente-1]);	// copia as informacoes do cliente da lista de espera pro cliente atual
 			removeCliente(clientesEspera, quantidadeClientes, indiceCliente);
@@ -1075,6 +1127,8 @@ void aceitaCorrida (char *indiceCliente, cliente *clienteAtual, cliente *cliente
 	}
 	return;
 }
+
+// Funcao que calcula o preco da corrida com os acumuladores globais
 unsigned short calcula_precoCorrida(unsigned short dist){
 	unsigned short preco = 200;								// tarifa base
 	preco = preco + (12*dist)/100;
@@ -1082,18 +1136,19 @@ unsigned short calcula_precoCorrida(unsigned short dist){
 	return preco;
 }
 
+// Funcao que o usuario indica se o cliente embarcou ou desembarcou
 void acaoPassageiro(char *estadoMotorista, cliente clienteAtual, char *flagComCliente, char *flagEmCorrida, unsigned short *precoCorrida,  char letra, char *indiceInfo){
 	if (*flagEmCorrida){					// se ele esta em corrida
 		if (letra == '#'){
 			if (!(*flagComCliente)){		//e sem o cliente
-				*flagComCliente = 1;		//pega o cliente
+				*flagComCliente = 1;		//cliente embarcou
 				string_serial("UI");
 				escreve_serial(clienteAtual.cod);
 				startContadorTempo();
 				atraso_500ms();
 				return;
 			}
-			if (*flagComCliente){		// solta cliente
+			if (*flagComCliente){		// cliente desembarcou
 				*flagComCliente = 0;
 				*flagEmCorrida = 0;
 				*estadoMotorista = 1;
@@ -1117,6 +1172,8 @@ void acaoPassageiro(char *estadoMotorista, cliente clienteAtual, char *flagComCl
 		}
 	}
 }
+
+// Funcao que muda a ordem em que os clientes estao ordenados na lista
 void mudaOpcaoB (char *opcaoB, cliente *clientesEspera, char *quantidadeClientes, char flagPerfil ,char letra){
 	if (letra == '1' && flagPerfil == 1){
 		*opcaoB += 1;
@@ -1135,6 +1192,9 @@ void mudaOpcaoB (char *opcaoB, cliente *clientesEspera, char *quantidadeClientes
 		atraso_2s();
 	}
 }
+
+
+// Funcao que muda se o motorista está ocupado ou nao enquanto estiver em atendimento
 void mudaMotoristaOcupado (char *motoristaOcupado, char letra, char flagPerfil, char flagEmCorrida){
 	if (letra == '3' && flagPerfil == 1){
 		*motoristaOcupado = ~(*motoristaOcupado);
@@ -1159,6 +1219,7 @@ void mudaMotoristaOcupado (char *motoristaOcupado, char letra, char flagPerfil, 
 	
 }
 
+// Funcao que realiza as operacoes da UBERGS apos o login ser feito
 char ubergs(char *flagSistema, char *opcaoB, char *motoristaOcupado, char *estadoMotorista, char flagPerfil, cliente *clientesEspera, char *quantidadeClientes){
 	unsigned char verificacao = 0;
 	char flagComCliente = 0;			// flag que indica se o motorista esta com cliente no carro
@@ -1174,7 +1235,20 @@ char ubergs(char *flagSistema, char *opcaoB, char *motoristaOcupado, char *estad
 	*estadoMotorista = 1;
 	
 	while (1){
-		letra = scan (i);
+		for (i = 1; i<=2; i++){
+			letra = scan (i);
+			movimento_manual(letra);
+			mudaOpcaoB(opcaoB, clientesEspera, quantidadeClientes, flagPerfil, letra);
+			mudaMotoristaOcupado(motoristaOcupado, letra, flagPerfil, flagEmCorrida);
+		}
+		for (i=3; i<=4; i++){
+			letra = scan(i);
+			
+			menu(&indiceCliente, &indiceInfo, *quantidadeClientes, clientesEspera, flagComCliente, estadoMotorista, clienteAtual, flagEmCorrida, letra, precoCorrida);
+			acaoPassageiro(estadoMotorista, clienteAtual, &flagComCliente, &flagEmCorrida, &precoCorrida, letra, &indiceInfo);
+			aceitaCorrida(&indiceCliente, &clienteAtual, clientesEspera, estadoMotorista, motoristaOcupado, &flagEmCorrida, quantidadeClientes, &letra, *opcaoB);
+		}
+		
 		if(indiceCliente == 0 && flagEmCorrida == 0){
 			verificacao = verifica_login();
 			if (verificacao == '*'){
@@ -1198,20 +1272,9 @@ char ubergs(char *flagSistema, char *opcaoB, char *motoristaOcupado, char *estad
 			armazenaCliente(clientesEspera, *opcaoB, quantidadeClientes); //armazena na lista de espera o cliente que esta no buffer
 			flagClienteGlobal = 0;
 		}
-		menu(&indiceCliente, &indiceInfo, *quantidadeClientes, clientesEspera, flagComCliente, estadoMotorista, clienteAtual, flagEmCorrida, letra, precoCorrida);
-		movimento_manual(letra);
-		acaoPassageiro(estadoMotorista, clienteAtual, &flagComCliente, &flagEmCorrida, &precoCorrida, letra, &indiceInfo);
-		mudaOpcaoB(opcaoB, clientesEspera, quantidadeClientes, flagPerfil, letra);
-		mudaMotoristaOcupado(motoristaOcupado, letra, flagPerfil, flagEmCorrida);
-		aceitaCorrida(&indiceCliente, &clienteAtual, clientesEspera, estadoMotorista, motoristaOcupado, &flagEmCorrida, quantidadeClientes, &letra, *opcaoB);
 		
 		if (flagComCliente)
 		precoCorrida = calcula_precoCorrida(clienteAtual.distDestino);
-		
-		
-		i++;
-		if (i > 4)
-		i = 1;
 	}
 }
 
@@ -1221,6 +1284,7 @@ void lcdEscreverSenha(){
 	comando_lcd(0xC0); // nova linha
 }
 
+// Funcao em que se realiza login
 char login (char *flagSistema, char *opcaoB, char *motoristaOcupado, char *estadoMotorista){
 	char perfil = 0;
 	lcdEscreverSenha();
@@ -1267,7 +1331,6 @@ char login (char *flagSistema, char *opcaoB, char *motoristaOcupado, char *estad
 		}
 	}
 }
-
 
 
 void interpreta_serial(){ //interpreta as mensagens enviadas pelo servidor externo
@@ -1335,8 +1398,8 @@ void interpreta_serial(){ //interpreta as mensagens enviadas pelo servidor exter
 	}
 }
 
-
-ISR(USART_RX_vect){ // interrupção de recebimento serial
+// interrupção de recebimento serial
+ISR(USART_RX_vect){
 	while(!(UCSR0A& (1<<RXC0)));
 	char temp =0;
 	temp = UDR0;
@@ -1345,6 +1408,7 @@ ISR(USART_RX_vect){ // interrupção de recebimento serial
 	interpreta_serial();
 }
 
+// interrupção do timer 0
 ISR(TIMER0_OVF_vect){
 	startContadorTempo();
 	auxTempoCorridaGlobal++;
@@ -1353,6 +1417,7 @@ ISR(TIMER0_OVF_vect){
 		janela10secGlobal++;
 	}
 }
+
 
 int main(void){
 	char perfil;
