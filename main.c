@@ -42,6 +42,8 @@ unsigned char teclado[4][3]={'1','2','3',
 #define QTD_RUASY 3											// Quantidade de ruas horizontais
 #define LARGURAX 40											// Maior espessura de rua vertical
 #define LARGURAY 48											// Maior espessura de rua horizontal
+#define MAIORQUADRAY 520									// Maior largura de quadra (referencia vertical)
+#define MAIORQUADRAX 474									// Maior Largura de quadra (referencia horizontal)
 unsigned short RUASX [QTD_RUASX] = {378, 814,  1288, 1754}; // Centro das ruas horizontais
 unsigned short RUASY [QTD_RUASY] = {484, 1004, 1524};		// Centro das ruas verticais
 unsigned short RUAS [12][2] = {								// Mapa de todas as esquinas no com o centro das ruas como referencia
@@ -492,15 +494,28 @@ unsigned char calcula_caminho (unsigned short x, unsigned short y, unsigned shor
 }
 
 // calcula a distancia de um trajeto (caminho efetivo a ser realizadopelo motorista)
-unsigned short calcula_distancia(unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final){
-	unsigned short distancia = modulo(x-x_final)+ modulo(y-y_final);
-	return distancia;
+unsigned short calcula_distancia (unsigned short x_inicial, unsigned short y_inicial, unsigned short x_final, unsigned short y_final){
+	unsigned short dist = 0;
+	unsigned char esquina1, esquina2;
+	if ( (modulo(y_final - y_inicial) < MAIORQUADRAY) && (x_final == x_inicial)){
+		dist = modulo( y_final - y_inicial);
+		} else if ( (modulo(x_final - x_inicial) < MAIORQUADRAX) && (y_final == y_inicial)){
+		dist = modulo( x_final - x_inicial);
+		} else {
+		esquina1 = escolhe_esquina(x_inicial, y_inicial, x_final, y_final);
+		esquina2 = escolhe_esquina(x_final, y_final, x_inicial, y_inicial);
+		dist += modulo(x_inicial - RUAS[esquina1] [0]) + modulo (y_inicial - RUAS[esquina1][1]);
+		dist += modulo(x_final - RUAS[esquina2][0]) + modulo (y_final - RUAS[esquina2][1]);
+		dist += modulo(RUAS[esquina1][0] - RUAS[esquina2][0]) + modulo (RUAS[esquina1][1] - RUAS[esquina2][1]);
+	}
+	return dist;
+
 }
 
 // Funcao que indica o sentido que o carro deve seguir
 void gps (unsigned short x, unsigned short y, unsigned short x_final, unsigned short y_final, char flagComCliente, char indiceInfo, unsigned short precoCorrida){
-	unsigned char proxima = 0, sentido = 0;
-	unsigned short x_prox, y_prox;
+	unsigned char proxima = 0, sentido1 = 0, sentido2 = 0;
+	unsigned short x_prox, y_prox, x_prox2, y_prox2;
 	unsigned int dist_destino;
 	proxima = escolhe_esquina(x, y, x_final, y_final);
 	// para ponto atual
@@ -508,48 +523,32 @@ void gps (unsigned short x, unsigned short y, unsigned short x_final, unsigned s
 	y_prox = RUAS[proxima][1];
 	if (x == x_final){
 		if (y < y_final){
-			sentido = 'S';
+			sentido1 = 'S';
 			} else if (y > y_final){
-			sentido = 'N';
+			sentido1 = 'N';
 			} else {
-			sentido = 'D';
+			sentido1 = 'D';
 		}
 		
 		} else if (y == y_final){
 		if(x < x_final){
-			sentido = 'L';
+			sentido1 = 'L';
 			} else if (x > x_final){
-			sentido = 'O';
+			sentido1 = 'O';
 			} else {
-			sentido = 'D';
+			sentido1 = 'D';
 		}
 		
 		} else if (x > x_prox){
-		sentido = 'O';
+		sentido1 = 'O';
 		} else if (x < x_prox){
-		sentido = 'L';
+		sentido1 = 'L';
 		} else if (y > y_prox){
-		sentido = 'N';
+		sentido1 = 'N';
 		} else if (y < y_prox){
-		sentido = 'S';
+		sentido1 = 'S';
 	}
-	if (indiceInfo == 0){
-		limpa_lcd();
-		escreve_lcd("Siga a ");
-		if (sentido == 'N'){
-			escreve_lcd("Norte.");
-			} else if (sentido == 'S'){
-			escreve_lcd("Sul.");
-			} else if (sentido == 'L'){
-			escreve_lcd("Leste.");
-			} else if (sentido == 'O'){
-			escreve_lcd("Oeste.");
-		}
-		} else if (indiceInfo == 1){
-		limpa_lcd();
-		escreve_lcd("Preco(cR$):");
-		imprimeASCII(precoCorrida);
-	}
+	
 	dist_destino = calcula_distancia(x,y,x_final,y_final);
 	
 	// para prox ponto
@@ -557,62 +556,90 @@ void gps (unsigned short x, unsigned short y, unsigned short x_final, unsigned s
 		x = x_prox;
 		y = y_prox;
 		proxima = escolhe_esquina(x, y, x_final, y_final);
+		
 		x_prox = RUAS[proxima][0];
 		y_prox = RUAS[proxima][1];
+		if((modulo(x_final-x_prox)>modulo(x_final-posCarroGlobal.x))||(modulo(y_final-y_prox)>modulo(y_final-posCarroGlobal.y))){
+			x_prox=x;
+			y_prox=y;
+		}
+
+
 		if (x == x_final){
 			if (y < y_final){
-				sentido = 'S';
+				sentido2 = 'S';
 				} else if (y > y_final){
-				sentido = 'N';
+				sentido2 = 'N';
 				} else {
-				sentido = 'D';
+				sentido2 = 'D';
 			}
-			} else if (y == y_final){
+		}else if (y == y_final){
 			if(x < x_final){
-				sentido = 'L';
-				} else if (x > x_final){
-				sentido = 'O';
-				} else {
-				sentido = 'D';
+				sentido2 = 'L';
+			} else if (x > x_final){
+				sentido2 = 'O';
+			} else {
+				sentido2 = 'D';
 			}
-			} else if (x > x_prox){
-			sentido = 'O';
-			} else if (x < x_prox){
-			sentido = 'L';
-			} else if (y > y_prox){
-			sentido = 'N';
-			} else if (y < y_prox){
-			sentido = 'S';
-		}
-		//  printf("\nEm %im, siga a %c", modulo(y-y_prox + x-x_prox), sentido); // substituir por escreve_lcd
-		comando_lcd(0xC0);
-		escreve_lcd(" Em ");
-		imprimeASCII(modulo(posCarroGlobal.y-y + posCarroGlobal.x-x));
-		escreve_lcd("m ");
-		if (sentido == 'N'){
-			escreve_lcd("Norte.");
-			} else if (sentido == 'S'){
-			escreve_lcd("Sul.");
-			} else if (sentido == 'L'){
-			escreve_lcd("Leste.");
-			} else if (sentido == 'O'){
-			escreve_lcd("Oeste.");
-		}
+		} else if (x > x_prox){
+			sentido2 = 'O';
+		} else if (x < x_prox){
+			sentido2 = 'L';
+		} else if (y > y_prox){
+			sentido2 = 'N';
+		} else if (y < y_prox){
+			sentido2 = 'S';
+			}
+			//  printf("\nEm %im, siga a %c", modulo(y-y_prox + x-x_prox), sentido); // substituir por escreve_lcd
+			
 		
-		} else {
+		} 
 		// printf("\nDestino a %im", dist_destino); // substituir por escreve_lcd
-		if (flagComCliente){
-			comando_lcd(0xC0);
-			escreve_lcd("Destino em: ");
-			imprimeASCII(dist_destino);
-			escreve_lcd("m.");
-			} else if (!flagComCliente){
-			comando_lcd(0xC0);
-			escreve_lcd("Cliente em: ");
-			imprimeASCII(dist_destino);
-			escreve_lcd("m.");
+		if (indiceInfo == 0){
+			limpa_lcd();
+			escreve_lcd("Siga a ");
+			if (sentido1 == 'N'){
+				escreve_lcd("Norte.");
+				} else if (sentido1 == 'S'){
+				escreve_lcd("Sul.");
+				} else if (sentido1 == 'L'){
+				escreve_lcd("Leste.");
+				} else if (sentido1 == 'O'){
+				escreve_lcd("Oeste.");
+			}
+		} else if (indiceInfo == 1){
+			limpa_lcd();
+			escreve_lcd("Preco(cR$):");
+			imprimeASCII(precoCorrida);
 		}
-	}
+			
+		if (posCarroGlobal.x != x_final && posCarroGlobal.y != y_final){
+			comando_lcd(0xC0);
+			escreve_lcd(" Em ");
+			imprimeASCII(modulo(posCarroGlobal.y-y)+modulo(posCarroGlobal.x-x));
+			escreve_lcd("m ");
+			if (sentido2 == 'N'){
+				escreve_lcd("Norte.");
+			} else if (sentido2 == 'S'){
+				escreve_lcd("Sul.");
+			} else if (sentido2 == 'L'){
+				escreve_lcd("Leste.");
+			} else if (sentido2 == 'O'){
+				escreve_lcd("Oeste.");
+				}  
+		} else
+			if (flagComCliente){
+				comando_lcd(0xC0);
+				escreve_lcd("Destino em: ");
+				imprimeASCII(dist_destino);
+				escreve_lcd("m.");
+				} else if (!flagComCliente){
+				comando_lcd(0xC0);
+				escreve_lcd("Cliente em: ");
+				imprimeASCII(dist_destino);
+				escreve_lcd("m.");
+			}
+	
 }
 
 // Funcao que estima o preço em centavos
@@ -698,11 +725,11 @@ unsigned char verificacao_tecla2(char tempo){  // tempo em segundos (aproximado
 unsigned char verifica_login(){
 	
 	PORTD&=~(1<<(3));
-	if(!verificacao_tecla1(6)){
+	if(!verificacao_tecla1(3)){
 		PORTD|=(1<<(3));
 		return teclado[3][0];
 	}
-	if(!verificacao_tecla2(4)){
+	if(!verificacao_tecla2(2)){
 		PORTD|=(1<<(3));
 		return teclado[3][2];
 	}
@@ -833,13 +860,13 @@ void movimento_manual (char letra){
 	if (letra == '5'){
 		string_serial("UM");
 		escreve_serial(0);
-		} else if (letra == '2'){
+	} else if (letra == '2'){
 		string_serial("UM");
 		escreve_serial(1);
-		} else if (letra == '6'){
+	} else if (letra == '6'){
 		string_serial("UM");
 		escreve_serial(2);
-		} else if (letra == '4'){
+	} else if (letra == '4'){
 		string_serial("UM");
 		escreve_serial(3);
 	} else
@@ -1145,17 +1172,20 @@ void aceitaCorrida (char *indiceCliente, cliente *clienteAtual, cliente *cliente
 // Funcao que calcula o preco da corrida com os acumuladores globais
 unsigned short calcula_precoCorrida(unsigned short dist){
 	unsigned short preco = 200;								// tarifa base
-	preco = preco + (12*dist)/100;
+	preco = preco + 120*(dist/1000);
 	preco = preco + janela10secGlobal*5;
 	return preco;
 }
 
 // Funcao que o usuario indica se o cliente embarcou ou desembarcou
-void acaoPassageiro(char *estadoMotorista, cliente clienteAtual, char *flagComCliente, char *flagEmCorrida, unsigned short *precoCorrida,  char letra, char *indiceInfo){
+void acaoPassageiro(char *estadoMotorista, cliente clienteAtual, char *flagComCliente, char *flagEmCorrida, unsigned short *precoCorrida,  char *letra, char *indiceInfo,
+																						unsigned short *x_anterior, unsigned short *y_anterior, unsigned short *dist_corrida){
 	if (*flagEmCorrida){					// se ele esta em corrida
-		if (letra == '#'){
+		if (*letra == '#'){
 			if (!(*flagComCliente)){		//e sem o cliente
 				*flagComCliente = 1;		//cliente embarcou
+				*x_anterior=posCarroGlobal.x;
+				*y_anterior=posCarroGlobal.y;
 				string_serial("UI");
 				escreve_serial(clienteAtual.cod);
 				startContadorTempo();
@@ -1172,7 +1202,7 @@ void acaoPassageiro(char *estadoMotorista, cliente clienteAtual, char *flagComCl
 				string_serial("UE");
 				escreve_serial(*estadoMotorista);
 				stopContadorTempo();
-				*precoCorrida = calcula_precoCorrida(clienteAtual.distDestino);
+				*precoCorrida = calcula_precoCorrida(*dist_corrida);
 				stopContadorTempo();
 				janela10secGlobal = 0;
 				limpa_lcd();
@@ -1180,6 +1210,7 @@ void acaoPassageiro(char *estadoMotorista, cliente clienteAtual, char *flagComCl
 				comando_lcd(0xC0);
 				escreve_lcd("Preco(cR$):");
 				imprimeASCII(*precoCorrida);
+				*letra  = '\0';
 				atraso_2s();
 				return;
 			}
@@ -1233,6 +1264,13 @@ void mudaMotoristaOcupado (char *motoristaOcupado, char letra, char flagPerfil, 
 	
 }
 
+void atualiza_distancia_corrida(unsigned short *x_anterior, unsigned short *y_anterior, unsigned short *dist_corrida){
+	*dist_corrida+= modulo(*x_anterior-posCarroGlobal.x)+modulo(*y_anterior-posCarroGlobal.y);
+	*y_anterior=posCarroGlobal.y;
+	*x_anterior=posCarroGlobal.x;
+}
+
+
 // Funcao que realiza as operacoes da UBERGS apos o login ser feito
 char ubergs(char *flagSistema, char *opcaoB, char *motoristaOcupado, char *estadoMotorista, char flagPerfil, cliente *clientesEspera, char *quantidadeClientes){
 	unsigned char verificacao = 0;
@@ -1242,7 +1280,7 @@ char ubergs(char *flagSistema, char *opcaoB, char *motoristaOcupado, char *estad
 	cliente clienteAtual;				// cliente sendo atendido no momento
 	char indiceCliente = 0, indiceInfo = 0;
 	char i =0, letra;
-	unsigned short precoCorrida = 0;
+	unsigned short precoCorrida = 0, dist_corrida = 0, x_anterior = 0, y_anterior = 0;
 	
 	string_serial("UE");
 	escreve_serial(1);
@@ -1261,26 +1299,26 @@ char ubergs(char *flagSistema, char *opcaoB, char *motoristaOcupado, char *estad
 			letra = scan(i);
 			
 			menu(&indiceCliente, &indiceInfo, *quantidadeClientes, clientesEspera, flagComCliente, estadoMotorista, clienteAtual, flagEmCorrida, letra, precoCorrida);
-			acaoPassageiro(estadoMotorista, clienteAtual, &flagComCliente, &flagEmCorrida, &precoCorrida, letra, &indiceInfo);
+			acaoPassageiro(estadoMotorista, clienteAtual, &flagComCliente, &flagEmCorrida, &precoCorrida, &letra, &indiceInfo, &x_anterior, &y_anterior, &dist_corrida);
 			aceitaCorrida(&indiceCliente, &clienteAtual, clientesEspera, estadoMotorista, motoristaOcupado, &flagEmCorrida, quantidadeClientes, &letra, *opcaoB);
 			
 			if(indiceCliente == 0 && flagEmCorrida == 0){
-					if (letra == 'x'){
-						limpa_lcd();
-						escreve_lcd("Logoff realizado");
-						string_serial("UE");
-						escreve_serial(0);
-						*estadoMotorista = 0;
-						atraso_2s();
-						return 1;
-					}
-					if (letra == 'd'){
-						string_serial("UE");
-						escreve_serial(0);
-						*estadoMotorista = 0;
-						desligaSistema(flagSistema);
-						return letra;
-					}
+				if (letra == 'x'){
+					string_serial("UE");
+					escreve_serial(0);
+					limpa_lcd();
+					escreve_lcd("Logoff realizado");
+					*estadoMotorista = 0;
+					atraso_2s();
+					return 1;
+				}
+				if (letra == 'd'){
+					string_serial("UE");
+					escreve_serial(0);
+					*estadoMotorista = 0;
+					desligaSistema(flagSistema);
+					return letra;
+				}
 			}
 		}
 		if (*estadoMotorista == 1) {
@@ -1288,8 +1326,11 @@ char ubergs(char *flagSistema, char *opcaoB, char *motoristaOcupado, char *estad
 			flagClienteGlobal = 0;
 		}
 		
-		if (flagComCliente)
-		precoCorrida = calcula_precoCorrida(clienteAtual.distDestino);
+		if (flagComCliente){
+			atualiza_distancia_corrida(&x_anterior,&y_anterior,&dist_corrida);
+			precoCorrida = calcula_precoCorrida(dist_corrida);
+
+		}
 	}
 }
 
