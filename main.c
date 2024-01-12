@@ -18,7 +18,7 @@
 
 // Senhas
 #define SENHA1 "1"					//Senha do operador 1
-#define SENHA2 "000000"				//Senha do operador 2
+#define SENHA2 "2"				//Senha do operador 2
 
 // Display (PORTC)
 #define RS 4						// Pino RS do display na PORTC4
@@ -563,7 +563,7 @@ unsigned char debounce(unsigned char num_bit){
 	unsigned char ultimo=0;
 
 	while(cont<7){
-		atraso_1ms64();
+		atraso_1ms();
 		if(ultimo==(PINB&(1<<num_bit))){
 			cont++;
 		}
@@ -657,7 +657,6 @@ unsigned char scan(unsigned char linha){//linhas 0, 1, 2 e 3
 		PORTD|=(1<<(linha_max-linha));
 		return teclado[linha-1][2];
 	}
-
 	PORTD|=(1<<(linha_max-linha));
 	return '\0';
 }
@@ -670,7 +669,6 @@ void inicia(){
 	PINB=255;				// pullup porta B
 	DDRC = 0x3F;			// porta C como saida -> 00111111
 	TCCR1A = 0;					// modo padrão do timer
-	config_serial();
 	sei();						// habilita interrupções
 	UCSR0B |= (1 << RXCIE0);	// Habilita a interrupção de recepção serial
 	limpa_lcd();
@@ -720,17 +718,18 @@ char ler_senha(){
 			}
 			else if (letra == '*'){
 				j = 0;
-				limpa_lcd();
-				escreve_lcd("Insira a senha:");
-				comando_lcd(0xC0);
 				while (senha[j+1]!='\0'){
 					senha[j] = '\0';
 					j++;
 				}
 				j=0;
+				limpa_lcd();
+				escreve_lcd("Insira a senha:");
+				comando_lcd(0xC0);				
 			}
 		}
 	}
+	
 	if (!compara_string(senha, SENHA1)){
 		perfil = 1;
 		return perfil;
@@ -780,12 +779,9 @@ void ordenaClientes (cliente *clientesEspera, char opcaoB, char *quantidadeClien
 	cliente Aux;
 	
 	if (opcaoB == 1){														// ordena de acordo com a distCliente
-		limpa_lcd();
-		escreve_lcd("opcao1");
-		atraso_2s();
 		for (i = 0; i<*quantidadeClientes-1; i++){
-			for(j = 0; j < *quantidadeClientes - i; j++){
-				if (clientesEspera[j].distCliente < clientesEspera[j+1].distCliente){
+			for(j = 0; j < *quantidadeClientes - i -1; j++){
+				if (clientesEspera[j].distCliente > clientesEspera[j+1].distCliente){
 					copiaCliente(&Aux, &clientesEspera[j]);
 					copiaCliente(&clientesEspera[j], &clientesEspera[j+1]);
 					copiaCliente(&clientesEspera[j+1], &Aux);
@@ -798,7 +794,7 @@ void ordenaClientes (cliente *clientesEspera, char opcaoB, char *quantidadeClien
 	if (opcaoB == 2){
 		for (i = 0; i<*quantidadeClientes-1; i++){
 			for(j = 0; j < *quantidadeClientes - i -1; j++){
-				if (clientesEspera[j].precoEstimado > clientesEspera[j+1].precoEstimado){
+				if (clientesEspera[j].precoEstimado < clientesEspera[j+1].precoEstimado){
 					copiaCliente(&Aux, &clientesEspera[j]);
 					copiaCliente(&clientesEspera[j], &clientesEspera[j+1]);
 					copiaCliente(&clientesEspera[j+1], &Aux);
@@ -810,8 +806,8 @@ void ordenaClientes (cliente *clientesEspera, char opcaoB, char *quantidadeClien
 
 	if (opcaoB == 3){
 		for (i = 0; i<*quantidadeClientes-1; i++){
-			for(j = 0; j < *quantidadeClientes - i; j++){
-				if (clientesEspera[j].tempoEstimado < clientesEspera[j+1].tempoEstimado){
+			for(j = 0; j < *quantidadeClientes - i -1; j++){
+				if (clientesEspera[j].tempoEstimado > clientesEspera[j+1].tempoEstimado){
 					copiaCliente(&Aux, &clientesEspera[j]);
 					copiaCliente(&clientesEspera[j], &clientesEspera[j+1]);
 					copiaCliente(&clientesEspera[j+1], &Aux);
@@ -986,16 +982,18 @@ void menu(char *indiceCliente, char *indiceInfo, char quantidadeClientes, client
 		}	
 }
 
-void aceitaCorrida (char *indiceCliente, cliente *clienteAtual, cliente *clientesEspera, char *estadoMotorista, char *motoristaOcupado, char *flagEmCorrida, char *quantidadeClientes, char letra){
+void aceitaCorrida (char *indiceCliente, cliente *clienteAtual, cliente *clientesEspera, char *estadoMotorista, char *motoristaOcupado, char *flagEmCorrida, char *quantidadeClientes, char *letra, char opcaoB){
 
 	if (*flagEmCorrida)	// se o motorista ja esta em atendimento
 	return;
+	if (*indiceCliente == 0)
+	return;
 		
 	flagClienteDisponivel = 0;
-
-	if (letra == '#'){										// se ele nao esta em atendimento, e aceitou o cliente
+	
+	if (*letra == '#'){										// se ele nao esta em atendimento, e aceitou o cliente		
 		string_serial("UA");
-		escreve_serial(clientesEspera[*indiceCliente-1].cod);		
+		escreve_serial(clientesEspera[*indiceCliente-1].cod);	
 		atraso_500ms();										// aguarda resposta do servidor
 		if (flagClienteDisponivel == 2){					//se servidor responde que cliente aceitou
 			copiaCliente(clienteAtual, &clientesEspera[*indiceCliente-1]);	// copia as informacoes do cliente da lista de espera pro cliente atual
@@ -1003,12 +1001,12 @@ void aceitaCorrida (char *indiceCliente, cliente *clienteAtual, cliente *cliente
 			*indiceCliente = 0;
 			*quantidadeClientes = *quantidadeClientes - 1;
 			*flagEmCorrida = 1;										// levanta a flag que esta em atendimento
-			letra = '\0';											// para evitar entrar em outra funcao
+			*letra = '\0';											// para evitar entrar em outra funcao
 			limpa_lcd();
-			escreve_lcd("Cliente:");
+			escreve_lcd("   Cliente:");
 			imprimeASCII(clienteAtual->cod);
 			comando_lcd(0xC0);
-			escreve_lcd(" aceito.");
+			escreve_lcd("     aceito.");
 			atraso_1s();				// aguarda um pouco para seguir	
 			if (*motoristaOcupado) {								// se a flag de que o motorista nao aparece ocupado em atendimento for verdadeira, retorna a funcao
 				imprimeASCII(*motoristaOcupado);
@@ -1019,15 +1017,19 @@ void aceitaCorrida (char *indiceCliente, cliente *clienteAtual, cliente *cliente
 			}
 			*estadoMotorista = 2;									// levanta a flag de ocupado do motorista
 			string_serial("UE");
-			escreve_serial(2);
-		
+			escreve_serial(2);		
 			return;
+		} else if (flagClienteDisponivel == 1){
+			limpa_lcd();
+			escreve_lcd("Cliente Indisp");
+			atraso_2s();
 		}
 	}
 	if (letra == '*'){
 		*indiceCliente = *indiceCliente-1;
 		*quantidadeClientes = *quantidadeClientes - 1;
 		removeCliente(clientesEspera, quantidadeClientes, indiceCliente);	// funcao para reordenar
+		ordenaClientes(clientesEspera, opcaoB, quantidadeClientes);
 		return;
 	}
 	return;
@@ -1056,11 +1058,52 @@ void acaoPassageiro(char *estadoMotorista, cliente clienteAtual, char *flagComCl
 		}
 	}
 }
+void mudaOpcaoB (char *opcaoB, cliente *clientesEspera, char *quantidadeClientes, char flagPerfil ,char letra){	
+	if (letra == '1' && flagPerfil == 1){
+		*opcaoB += 1;
+		if (*opcaoB > 3) *opcaoB = 1;
+		ordenaClientes(clientesEspera, *opcaoB, quantidadeClientes);
+		limpa_lcd();
+		escreve_lcd("Ordenados por:");
+		comando_lcd(0xC0);
+		if (*opcaoB == 1){
+			escreve_lcd("Menor Distancia");
+		} else if (*opcaoB == 2){
+			escreve_lcd("Maior Preco");
+		} else if (*opcaoB == 3){
+			escreve_lcd("Menor Tempo");
+		}
+		atraso_2s();
+	}
+}
+void mudaMotoristaOcupado (char *motoristaOcupado, char letra, char flagPerfil, char flagEmCorrida){
+	if (letra == '3' && flagPerfil == 1){
+		*motoristaOcupado = ~(*motoristaOcupado);
+		limpa_lcd();
+		if (!(*motoristaOcupado)){	
+			if (flagEmCorrida){
+				string_serial("UE");
+				escreve_serial(2);
+			}		
+			escreve_lcd("Ocupado");			
+		} else if (*motoristaOcupado){
+			if (flagEmCorrida){
+				string_serial("UE");
+				escreve_serial(1);
+			}
+			escreve_lcd("Disponivel");			
+		}
+		comando_lcd(0xC0);
+		escreve_lcd("em corridas.");
+		atraso_2s();
+	} 
+	
+}
 
 char ubergs(char *flagSistema, char *opcaoB, char *motoristaOcupado, char *estadoMotorista, char flagPerfil, cliente *clientesEspera, char *quantidadeClientes){
 	unsigned char verificacao = 0;
-	char flagComCliente = 0;			// flag que indica se o motorista esta com cliente
-	char flagEmCorrida = 0;				// flag que indica se o motorista esta em atendimento 
+	char flagComCliente = 0;			// flag que indica se o motorista esta com cliente no carro
+	char flagEmCorrida = 0;				// flag que indica se o motorista esta com corrida aceita
 	flagClienteGlobal = 0;				// se ha cliente no buffer
 	cliente clienteAtual;				// cliente sendo atendido no momento	
 	char indiceCliente = 0, indiceInfo = 0;
@@ -1068,10 +1111,9 @@ char ubergs(char *flagSistema, char *opcaoB, char *motoristaOcupado, char *estad
  	string_serial("UE");
  	escreve_serial(1);
 	*estadoMotorista = 1;
-
 	while (1){	
 		letra = scan (i);
-		if(indiceCliente == 0 && flagEmCorrida == 0){
+		if(indiceCliente == 0 && flagEmCorrida == 10){
 			verificacao = verifica_login();
 			if (verificacao == '*'){
  				string_serial("UE");
@@ -1090,15 +1132,16 @@ char ubergs(char *flagSistema, char *opcaoB, char *motoristaOcupado, char *estad
 				return 1;
 			}
 		}
-
 		if (*estadoMotorista == 1) {	
 			armazenaCliente(clientesEspera, *opcaoB, quantidadeClientes); //armazena na lista de espera o cliente que esta no buffer
 			flagClienteGlobal = 0;
-		}		
-		menu(&indiceCliente, &indiceInfo, *quantidadeClientes, clientesEspera, flagComCliente, estadoMotorista, clienteAtual, flagEmCorrida, letra, i);
-		aceitaCorrida(&indiceCliente, &clienteAtual, clientesEspera, estadoMotorista, motoristaOcupado, &flagEmCorrida, quantidadeClientes, letra); 		
+		}				
+		menu(&indiceCliente, &indiceInfo, *quantidadeClientes, clientesEspera, flagComCliente, estadoMotorista, clienteAtual, flagEmCorrida, letra, i);			
 		movimento_manual(letra);
 		acaoPassageiro(estadoMotorista, clienteAtual, &flagComCliente, &flagEmCorrida, letra);
+		mudaOpcaoB(opcaoB, clientesEspera, quantidadeClientes, flagPerfil, letra);
+		mudaMotoristaOcupado(motoristaOcupado, letra, flagPerfil, flagEmCorrida);
+		aceitaCorrida(&indiceCliente, &clienteAtual, clientesEspera, estadoMotorista, motoristaOcupado, &flagEmCorrida, quantidadeClientes, &letra, *opcaoB); 	
 		
 		i++;
 		if (i > 4) 
@@ -1130,9 +1173,7 @@ char login (char *flagSistema, char *opcaoB, char *motoristaOcupado, char *estad
 		}
 		if (perfil == 1){
 			limpa_lcd();
-			escreve_lcd("Perfil 1 Logado!");
-			string_serial("UE");
-			escreve_serial(1);
+			escreve_lcd("Perfil 1 Logado!");			
 			atraso_2s();
 			perfil = ubergs(flagSistema, opcaoB, motoristaOcupado, estadoMotorista, 1, clientesEspera, &quantidadeClientes);
 			quantidadeClientes = 0;
@@ -1140,9 +1181,7 @@ char login (char *flagSistema, char *opcaoB, char *motoristaOcupado, char *estad
 		}
 		if (perfil == 2){
 			limpa_lcd();
-			escreve_lcd("Perfil 2 Logado!");
-			string_serial("UE");
-			escreve_serial(1);
+			escreve_lcd("Perfil 2 Logado!");			
 			atraso_2s();
 			perfil = ubergs(flagSistema, opcaoB, motoristaOcupado, estadoMotorista, 2, clientesEspera, &quantidadeClientes);
 			quantidadeClientes = 0;
@@ -1183,13 +1222,10 @@ void interpreta_serial(){ //interpreta as mensagens enviadas pelo servidor exter
 			if ((posCarroGlobal.y > RUASY[i] - LARGURAY/2) && (posCarroGlobal.y < RUASY[i] + LARGURAY/2)) posCarroGlobal.y = RUASY[i];
 
 		}
-		limpa_serial_global();
-		
-	}
-	
+		limpa_serial_global();		
+	}	
 	else if(serial_global[0] == 'S' && serial_global[1] == 'C' && serial_global[10] !='\0'){ //protocolo de chamada de novo cliente
 		bufferCliente.cod = serial_global[2];
-
 		bufferCliente.pos_saida_x = (serial_global[3]<<8) + serial_global[4];
 		bufferCliente.pos_saida_y = (serial_global[5]<<8) + serial_global[6];
 		bufferCliente.pos_destino_x = (serial_global[7]<<8) + serial_global[8];
@@ -1207,34 +1243,27 @@ void interpreta_serial(){ //interpreta as mensagens enviadas pelo servidor exter
 		}
 		for (i = 0; i < QTD_RUASY; i++){
 			if ((bufferCliente.pos_destino_y > RUASY[i] - LARGURAY/2) && (bufferCliente.pos_destino_y < RUASY[i] + LARGURAY/2)) bufferCliente.pos_destino_y = RUASY[i];
-		}
-		
+		}		
 		string_serial("UC");
 		limpa_serial_global();
-	}
-	
+	}	
 	else if(serial_global[0] == 'S' && serial_global[1] == 'M'){		// protocolo resposta do servidor a comando de movimentaçao
 		limpa_serial_global();
-	}
-	
+	}	
 	else if(serial_global[0] == 'S' && serial_global[1] == 'E'){		// protocolo resposta do servidor a comando de estado do veiculo
 		limpa_serial_global();
-	}
-	
+	}	
 	else if(serial_global[0] == 'S' && serial_global[1] == 'A' && serial_global[2] =='C'){ //protocolo de resposta do servidor a comando de aceite - confirmado
 		flagClienteDisponivel = 2;	//cliente disponivel
 		limpa_serial_global();
-	}
-	
+	}	
 	else if(serial_global[0] == 'S' && serial_global[1] == 'A' && serial_global[2] =='X'){ //protocolo de resposta do servidor a comando de aceite - não disponivel
 		flagClienteDisponivel = 1;		//cliente nao disponivel
 		limpa_serial_global();
-	}
-	
+	}	
 	else if(serial_global[0] == 'S' && serial_global[1] == 'I'){		// protocolo de resposta do servidor a comando de inicio de corrida - pegou cliente
 		limpa_serial_global();
-	}
-	
+	}	
 	else if(serial_global[0] == 'S' && serial_global[1] == 'F'){		// protocolo de resposta do servidor a comando de fim de corrida - entregou cliente
 		limpa_serial_global();
 	}
@@ -1255,10 +1284,10 @@ int main(void){
 	unsigned char verificacao = 0;						// flag de verificacao se é solicitado desligamento ou nao
 	char flagSistema = 0;						// flag pra indicar se o sistema esta ligado ou nao
 	char opcaoB = 2;							// por padrao a opcaoB será 2 = preco; 1 = menor dist até cliente; 3 = menor tempo de corrida
-	flagClienteGlobal = 0;
-	flagClienteDisponivel = 0;
 	char motoristaOcupado = 0;					// flag que apenas o operador 1 pode mudar, se o sistema indica ocupado ou nao em atendimento, 0 = nao ocupado, 1 = ocupado
 	char estadoMotorista = 0;					// flag indicando estado do motorisra, 0 = indisponivel, 1 = disponivel, 2 = ocupado	
+	flagClienteGlobal = 0;
+	flagClienteDisponivel = 0;
 	
 	inicia();									//nao liga o display nem configura serial, aguarda comando do usuario
 	while (1) {
