@@ -40,8 +40,8 @@ unsigned char teclado[4][3]={'1','2','3',
 // Mapa
 #define QTD_RUASX 4											// Quantidade de ruas verticais
 #define QTD_RUASY 3											// Quantidade de ruas horizontais
-#define LARGURAX 40											// Maior espessura de rua vertical
-#define LARGURAY 48											// Maior espessura de rua horizontal
+#define LARGURAX 50											// Maior espessura de rua vertical
+#define LARGURAY 58											// Maior espessura de rua horizontal
 #define MAIORQUADRAY 520									// Maior largura de quadra (referencia vertical)
 #define MAIORQUADRAX 474									// Maior Largura de quadra (referencia horizontal)
 unsigned short RUASX [QTD_RUASX] = {378, 814,  1288, 1754}; // Centro das ruas horizontais
@@ -530,22 +530,22 @@ void gps (unsigned short x, unsigned short y, unsigned short x_final, unsigned s
 			sentido1 = 'D';
 		}
 		
-		} else if (y == y_final){
+	} else if (y == y_final){
 		if(x < x_final){
 			sentido1 = 'L';
 			} else if (x > x_final){
 			sentido1 = 'O';
 			} else {
 			sentido1 = 'D';
-		}
+			}
 		
-		} else if (x > x_prox){
+	} else if (x > x_prox){
 		sentido1 = 'O';
-		} else if (x < x_prox){
+	} else if (x < x_prox){
 		sentido1 = 'L';
-		} else if (y > y_prox){
+	} else if (y > y_prox){
 		sentido1 = 'N';
-		} else if (y < y_prox){
+	} else if (y < y_prox){
 		sentido1 = 'S';
 	}
 	
@@ -590,11 +590,10 @@ void gps (unsigned short x, unsigned short y, unsigned short x_final, unsigned s
 			} else if (y < y_prox){
 			sentido2 = 'S';
 		}
-		//  printf("\nEm %im, siga a %c", modulo(y-y_prox + x-x_prox), sentido); // substituir por escreve_lcd
 		
 		
 	}
-	// printf("\nDestino a %im", dist_destino); // substituir por escreve_lcd
+
 	if (indiceInfo == 0){
 		limpa_lcd();
 		escreve_lcd("Siga a ");
@@ -626,7 +625,9 @@ void gps (unsigned short x, unsigned short y, unsigned short x_final, unsigned s
 			escreve_lcd("Leste.");
 			} else if (sentido2 == 'O'){
 			escreve_lcd("Oeste.");
-		}
+			} else if (sentido2 == 'D'){
+				escreve_lcd("destino.");
+			}
 	} else
 	if (flagComCliente){
 		comando_lcd(0xC0);
