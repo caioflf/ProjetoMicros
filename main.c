@@ -573,72 +573,72 @@ void gps (unsigned short x, unsigned short y, unsigned short x_final, unsigned s
 				} else {
 				sentido2 = 'D';
 			}
-		}else if (y == y_final){
+			}else if (y == y_final){
 			if(x < x_final){
 				sentido2 = 'L';
-			} else if (x > x_final){
+				} else if (x > x_final){
 				sentido2 = 'O';
-			} else {
+				} else {
 				sentido2 = 'D';
 			}
-		} else if (x > x_prox){
+			} else if (x > x_prox){
 			sentido2 = 'O';
-		} else if (x < x_prox){
+			} else if (x < x_prox){
 			sentido2 = 'L';
-		} else if (y > y_prox){
+			} else if (y > y_prox){
 			sentido2 = 'N';
-		} else if (y < y_prox){
+			} else if (y < y_prox){
 			sentido2 = 'S';
-			}
-			//  printf("\nEm %im, siga a %c", modulo(y-y_prox + x-x_prox), sentido); // substituir por escreve_lcd
-			
-		
-		} 
-		// printf("\nDestino a %im", dist_destino); // substituir por escreve_lcd
-		if (indiceInfo == 0){
-			limpa_lcd();
-			escreve_lcd("Siga a ");
-			if (sentido1 == 'N'){
-				escreve_lcd("Norte.");
-				} else if (sentido1 == 'S'){
-				escreve_lcd("Sul.");
-				} else if (sentido1 == 'L'){
-				escreve_lcd("Leste.");
-				} else if (sentido1 == 'O'){
-				escreve_lcd("Oeste.");
-			}
-		} else if (indiceInfo == 1){
-			limpa_lcd();
-			escreve_lcd("Preco(cR$):");
-			imprimeASCII(precoCorrida);
 		}
-			
-		if (posCarroGlobal.x != x_final && posCarroGlobal.y != y_final){
-			comando_lcd(0xC0);
-			escreve_lcd(" Em ");
-			imprimeASCII(modulo(posCarroGlobal.y-y)+modulo(posCarroGlobal.x-x));
-			escreve_lcd("m ");
-			if (sentido2 == 'N'){
-				escreve_lcd("Norte.");
+		//  printf("\nEm %im, siga a %c", modulo(y-y_prox + x-x_prox), sentido); // substituir por escreve_lcd
+		
+		
+	}
+	// printf("\nDestino a %im", dist_destino); // substituir por escreve_lcd
+	if (indiceInfo == 0){
+		limpa_lcd();
+		escreve_lcd("Siga a ");
+		if (sentido1 == 'N'){
+			escreve_lcd("Norte.");
+			} else if (sentido1 == 'S'){
+			escreve_lcd("Sul.");
+			} else if (sentido1 == 'L'){
+			escreve_lcd("Leste.");
+			} else if (sentido1 == 'O'){
+			escreve_lcd("Oeste.");
+		}
+		} else if (indiceInfo == 1){
+		limpa_lcd();
+		escreve_lcd("Preco(cR$):");
+		imprimeASCII(precoCorrida);
+	}
+	
+	if (posCarroGlobal.x != x_final && posCarroGlobal.y != y_final){
+		comando_lcd(0xC0);
+		escreve_lcd(" Em ");
+		imprimeASCII(modulo(posCarroGlobal.y-y)+modulo(posCarroGlobal.x-x));
+		escreve_lcd("m ");
+		if (sentido2 == 'N'){
+			escreve_lcd("Norte.");
 			} else if (sentido2 == 'S'){
-				escreve_lcd("Sul.");
+			escreve_lcd("Sul.");
 			} else if (sentido2 == 'L'){
-				escreve_lcd("Leste.");
+			escreve_lcd("Leste.");
 			} else if (sentido2 == 'O'){
-				escreve_lcd("Oeste.");
-				}  
-		} else
-			if (flagComCliente){
-				comando_lcd(0xC0);
-				escreve_lcd("Destino em: ");
-				imprimeASCII(dist_destino);
-				escreve_lcd("m.");
-				} else if (!flagComCliente){
-				comando_lcd(0xC0);
-				escreve_lcd("Cliente em: ");
-				imprimeASCII(dist_destino);
-				escreve_lcd("m.");
-			}
+			escreve_lcd("Oeste.");
+		}
+	} else
+	if (flagComCliente){
+		comando_lcd(0xC0);
+		escreve_lcd("Destino em: ");
+		imprimeASCII(dist_destino);
+		escreve_lcd("m.");
+		} else if (!flagComCliente){
+		comando_lcd(0xC0);
+		escreve_lcd("Cliente em: ");
+		imprimeASCII(dist_destino);
+		escreve_lcd("m.");
+	}
 	
 }
 
@@ -860,13 +860,13 @@ void movimento_manual (char letra){
 	if (letra == '5'){
 		string_serial("UM");
 		escreve_serial(0);
-	} else if (letra == '2'){
+		} else if (letra == '2'){
 		string_serial("UM");
 		escreve_serial(1);
-	} else if (letra == '6'){
+		} else if (letra == '6'){
 		string_serial("UM");
 		escreve_serial(2);
-	} else if (letra == '4'){
+		} else if (letra == '4'){
 		string_serial("UM");
 		escreve_serial(3);
 	} else
@@ -1124,12 +1124,12 @@ void aceitaCorrida (char *indiceCliente, cliente *clienteAtual, cliente *cliente
 	if (*letra == '#'){										// se ele nao esta em atendimento, e aceitou o cliente
 		string_serial("UA");
 		escreve_serial(clientesEspera[*indiceCliente-1].cod);
+		atraso_500ms();
 		while(!flagClienteDisponivel);										// aguarda resposta do servidor
 		if (flagClienteDisponivel == 2){					//se servidor responde que cliente aceitou
 			copiaCliente(clienteAtual, &clientesEspera[*indiceCliente-1]);	// copia as informacoes do cliente da lista de espera pro cliente atual
 			removeCliente(clientesEspera, quantidadeClientes, indiceCliente);
 			*indiceCliente = 0;
-			*quantidadeClientes -= 1;
 			*flagEmCorrida = 1;										// levanta a flag que esta em atendimento
 			*letra = '\0';											// para evitar entrar em outra funcao
 			limpa_lcd();
@@ -1179,7 +1179,7 @@ unsigned short calcula_precoCorrida(unsigned short dist){
 
 // Funcao que o usuario indica se o cliente embarcou ou desembarcou
 void acaoPassageiro(char *estadoMotorista, cliente clienteAtual, char *flagComCliente, char *flagEmCorrida, unsigned short *precoCorrida,  char *letra, char *indiceInfo,
-																						unsigned short *x_anterior, unsigned short *y_anterior, unsigned short *dist_corrida){
+unsigned short *x_anterior, unsigned short *y_anterior, unsigned short *dist_corrida){
 	if (*flagEmCorrida){					// se ele esta em corrida
 		if (*letra == '#'){
 			if (!(*flagComCliente)){		//e sem o cliente
