@@ -530,22 +530,22 @@ void gps (unsigned short x, unsigned short y, unsigned short x_final, unsigned s
 			sentido1 = 'D';
 		}
 		
-	} else if (y == y_final){
+		} else if (y == y_final){
 		if(x < x_final){
 			sentido1 = 'L';
 			} else if (x > x_final){
 			sentido1 = 'O';
 			} else {
 			sentido1 = 'D';
-			}
+		}
 		
-	} else if (x > x_prox){
+		} else if (x > x_prox){
 		sentido1 = 'O';
-	} else if (x < x_prox){
+		} else if (x < x_prox){
 		sentido1 = 'L';
-	} else if (y > y_prox){
+		} else if (y > y_prox){
 		sentido1 = 'N';
-	} else if (y < y_prox){
+		} else if (y < y_prox){
 		sentido1 = 'S';
 	}
 	
@@ -626,8 +626,8 @@ void gps (unsigned short x, unsigned short y, unsigned short x_final, unsigned s
 			} else if (sentido2 == 'O'){
 			escreve_lcd("Oeste.");
 			} else if (sentido2 == 'D'){
-				escreve_lcd("destino.");
-			}
+			escreve_lcd("destino.");
+		}
 	} else
 	if (flagComCliente){
 		comando_lcd(0xC0);
@@ -646,16 +646,16 @@ void gps (unsigned short x, unsigned short y, unsigned short x_final, unsigned s
 // Funcao que estima o preço em centavos
 unsigned short estimagemPreco (unsigned short dist) {
 	unsigned short preco = 200;
-	preco = preco + (12*dist)/100;  // preço do km percorrido
-	preco = preco + (dist/139)*5;   // preço do tempo (138,88 m/10s)
+	preco = preco + 120*(dist/1000);  // preço do km percorrido
+	preco = preco + (dist/138)*5;   // preço do tempo (138,88 m/10s)
 	
 	return preco;
 }
 
 // Funcao que estima o tempo em segundos
 unsigned short estimagemTempo (unsigned short dist) {
-	unsigned short tempo = dist/14;
-	return tempo; 		//50km/h = 13,88 m/s ; arredondei para 14 m/s para fins de aproximaçao
+	unsigned short tempo = dist/13;	//50km/h = 13,88 m/s ; arredondei para 13 m/s para fins de aproximaça
+	return tempo; 		
 }
 
 unsigned char debounce(unsigned char num_bit){
@@ -958,7 +958,6 @@ void armazenaCliente(cliente *clientesEspera, char opcaoB, char *quantidadeClien
 	
 	ordenaClientes(clientesEspera, opcaoB, quantidadeClientes);
 	
-	flagClienteGlobal = 0;
 	return;
 }
 
@@ -1064,7 +1063,7 @@ void menu(char *indiceCliente, char *indiceInfo, char quantidadeClientes, client
 		imprimeASCII(*indiceCliente);
 		return;
 	}
-	if (letra == '0' && flagEmCorrida == 0){
+	if (letra == '0'/* && flagEmCorrida == 0*/){
 		if (*indiceCliente == quantidadeClientes)
 		return;
 		*indiceCliente+=1;
@@ -1241,20 +1240,23 @@ void mudaOpcaoB (char *opcaoB, cliente *clientesEspera, char *quantidadeClientes
 
 
 // Funcao que muda se o motorista está ocupado ou nao enquanto estiver em atendimento
-void mudaMotoristaOcupado (char *motoristaOcupado, char letra, char flagPerfil, char flagEmCorrida){
+void mudaMotoristaOcupado (char *motoristaOcupado, char letra, char flagPerfil, char flagEmCorrida, char *estadoMotorista){
 	if (letra == '3' && flagPerfil == 1){
 		*motoristaOcupado = ~(*motoristaOcupado);
 		limpa_lcd();
 		if (!(*motoristaOcupado)){
 			if (flagEmCorrida){
+				*estadoMotorista = 2;
 				string_serial("UE");
-				escreve_serial(2);
+				escreve_serial(*estadoMotorista);
 			}
 			escreve_lcd("Ocupado");
 			} else if (*motoristaOcupado){
 			if (flagEmCorrida){
+				*estadoMotorista = 1;
 				string_serial("UE");
-				escreve_serial(1);
+				escreve_serial(*estadoMotorista);
+				
 			}
 			escreve_lcd("Disponivel");
 		}
@@ -1293,7 +1295,7 @@ char ubergs(char *flagSistema, char *opcaoB, char *motoristaOcupado, char *estad
 			
 			movimento_manual(letra);
 			mudaOpcaoB(opcaoB, clientesEspera, quantidadeClientes, flagPerfil, letra);
-			mudaMotoristaOcupado(motoristaOcupado, letra, flagPerfil, flagEmCorrida);
+			mudaMotoristaOcupado(motoristaOcupado, letra, flagPerfil, flagEmCorrida, estadoMotorista);
 			
 		}
 		for (i=3; i<=4; i++){
@@ -1324,8 +1326,9 @@ char ubergs(char *flagSistema, char *opcaoB, char *motoristaOcupado, char *estad
 		}
 		if (*estadoMotorista == 1) {
 			armazenaCliente(clientesEspera, *opcaoB, quantidadeClientes); //armazena na lista de espera o cliente que esta no buffer
-			flagClienteGlobal = 0;
 		}
+		
+		flagClienteGlobal = 0;
 		
 		if (flagComCliente){
 			atualiza_distancia_corrida(&x_anterior,&y_anterior,&dist_corrida);
